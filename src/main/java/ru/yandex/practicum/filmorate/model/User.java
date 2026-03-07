@@ -1,9 +1,12 @@
 package ru.yandex.practicum.filmorate.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
-import java.time.Instant;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -11,19 +14,27 @@ import java.time.Instant;
 @AllArgsConstructor
 @ToString
 public class User {
+    @NotNull(groups = OnUpdate.class,
+            message = "Id должен быть указан")
     private Long id;
 
-    @NotBlank(message = "Электронная почта не должна быть пустой")
-    @Email
+    @NotBlank(message = "Электронная почта не должна быть пустой",
+            groups = OnCreate.class)
+    @Email(message = "Электронная почта должна содержать '@'",
+            groups = OnCreate.class)
     private String email;
 
-    @NotBlank(message = "Логин не должен быть пустым")
-    @Pattern(regexp = "^[a-zA-Z0-9]]*$", message = "Только латинские символы и цифры, без пробелов")
+    @NotBlank(message = "Логин не должен быть пустым",
+            groups = OnCreate.class)
+    @Pattern(regexp = "^[a-zA-Z0-9]*$",
+            message = "Только латинские символы и цифры, без пробелов",
+            groups = {OnCreate.class})
     private String login;
 
     private String name;
 
-    @NotBlank
-    @Past
-    private Instant birthday;
+    @NotNull(message = "Дата рождения должна быть указана",
+            groups = OnCreate.class)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate birthday;
 }
