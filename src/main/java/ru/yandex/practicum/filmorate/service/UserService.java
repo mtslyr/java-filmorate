@@ -1,13 +1,11 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.exception.EmailAlreadyUsedException;
-import ru.yandex.practicum.filmorate.exception.InvalidBirthDateException;
-import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
+import ru.yandex.practicum.filmorate.exception.ApiException;
 import ru.yandex.practicum.filmorate.model.User;
 
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,8 +19,7 @@ public class UserService {
         return users.values();
     }
 
-    public User createUser(User user) throws InvalidBirthDateException, EmailAlreadyUsedException {
-        validateBirthDay(user);
+    public User createUser(User user) throws ApiException {
         validateEmailIsNotUsed(user);
 
         user.setId(getNextId());
@@ -46,11 +43,15 @@ public class UserService {
     }
 
     public User updateUser(User user)
-            throws UserNotFoundException, EmailAlreadyUsedException, InvalidBirthDateException {
+            throws ApiException {
         User oldUser = users.get(user.getId());
 
         if (oldUser == null) {
-            throw new UserNotFoundException("Пользователь с id = %d не найден".formatted(user.getId()));
+            throw new ApiException(
+                    "Пользователь не найден",
+                    "id",
+                    user.getId().toString(),
+                    HttpStatus.NOT_FOUND);
         }
 
         if (user.getName() != null) {
@@ -67,26 +68,24 @@ public class UserService {
         }
 
         if (user.getBirthday() != null) {
-            validateBirthDay(user);
             oldUser.setBirthday(user.getBirthday());
         }
 
         return oldUser;
     }
 
-    private void validateEmailIsNotUsed(User user) throws EmailAlreadyUsedException {
+    private void validateEmailIsNotUsed(User user) throws ApiException {
         boolean isUsed = users.values()
                 .stream()
                 .anyMatch(u -> u.getEmail().equals(user.getEmail()));
 
         if (isUsed) {
-            throw new EmailAlreadyUsedException("Электронная почта %s уже используется".formatted(user.getEmail()));
-        }
-    }
-
-    private void validateBirthDay(User user) throws InvalidBirthDateException {
-        if (user.getBirthday().isAfter(LocalDate.now())) {
-            throw new InvalidBirthDateException("Дата рождения не может быть в будущем");
+            throw new ApiException(
+                    "Электронная почта уже используется",
+                    "email",
+                    user.getEmail(),
+                    HttpStatus.BAD_REQUEST
+            );
         }
     }
 }

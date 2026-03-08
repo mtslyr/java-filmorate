@@ -36,5 +36,6 @@ public class User {
     @NotNull(message = "Дата рождения должна быть указана",
             groups = OnCreate.class)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @Past(message = "Дата рождения должна быть в прошлом", groups = {OnCreate.class, OnUpdate.class})
     private LocalDate birthday;
 }

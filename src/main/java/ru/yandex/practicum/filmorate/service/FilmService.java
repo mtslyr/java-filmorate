@@ -1,12 +1,13 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.exception.FilmNotFountException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.exception.ApiException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +22,7 @@ public class FilmService {
         return films.values();
     }
 
-    public Film createFilm(Film film) throws ValidationException {
+    public Film createFilm(Film film) throws ApiException {
         validateReleaseDate(film);
         film.setId(getNextId());
         films.put(film.getId(), film);
@@ -29,11 +30,16 @@ public class FilmService {
     }
 
     public Film updateFilm(Film film)
-            throws FilmNotFountException, ValidationException {
+            throws ApiException {
         Film oldFilm = films.get(film.getId());
 
         if (oldFilm == null) {
-            throw new FilmNotFountException("Фильм с id = %d не найден".formatted(film.getId()));
+            throw new ApiException(
+                    "Фильм не найден",
+                    "id",
+                    film.getId().toString(),
+                    HttpStatus.NOT_FOUND
+            );
         }
 
         if (film.getDescription() != null) {
@@ -67,12 +73,17 @@ public class FilmService {
     }
 
     private void validateReleaseDate(Film film) {
+        final String fieldName = "releaseDate";
         final Predicate<Film> validateFilmReleaseDate =
                 f -> f.getReleaseDate()
                         .isAfter(LocalDate.of(1895, 12, 28));
 
         if (!validateFilmReleaseDate.test(film)) {
-            throw new ValidationException("Дата релиза должна быть не ранее 28-12-1895");
+            throw new ApiException(
+                    "Дата релиза должна быть не ранее 28-12-1895",
+                    fieldName,
+                    film.getReleaseDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                    HttpStatus.BAD_REQUEST);
         }
     }
 

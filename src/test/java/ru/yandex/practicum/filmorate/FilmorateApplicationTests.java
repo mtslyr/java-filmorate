@@ -506,7 +506,7 @@ class FilmorateApplicationTests {
 
 		@Test
 		@DisplayName("Создание пользователя с датой рождения в будущем - ошибка")
-		void shouldNotCreateUserWithFutureBirthday() {
+		void shouldNotCreateUserWithFutureBirthday() throws Exception {
 			User user = new User(
 					null,
 					"email@test.com",
@@ -515,11 +515,10 @@ class FilmorateApplicationTests {
 					LocalDate.now().plusYears(1)
 			);
 
-			assertThrows(ServletException.class, () -> {
-				mockMvc.perform(post("/users")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(asJsonString(user)));
-			});
+			mockMvc.perform(post("/users")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(asJsonString(user)))
+					.andExpect(status().isBadRequest());
 		}
 
 		@Test
@@ -541,13 +540,11 @@ class FilmorateApplicationTests {
 					LocalDate.now().minusYears(25)
 			);
 
-			// Создаем первого пользователя
 			mockMvc.perform(post("/users")
 							.contentType(MediaType.APPLICATION_JSON)
 							.content(asJsonString(user1)))
 					.andExpect(status().isOk());
 
-			// Пытаемся создать второго с тем же email
 			assertThrows(ServletException.class, () -> {
 				mockMvc.perform(post("/users")
 						.contentType(MediaType.APPLICATION_JSON)
@@ -576,7 +573,6 @@ class FilmorateApplicationTests {
 
 			User createdUser = objectMapper.readValue(response, User.class);
 
-			// Обновляем пользователя
 			createdUser.setName("New Name");
 			createdUser.setEmail("newemail@test.com");
 
@@ -643,7 +639,6 @@ class FilmorateApplicationTests {
 					LocalDate.now().minusYears(25)
 			);
 
-			// Создаем двух пользователей
 			String response1 = mockMvc.perform(post("/users")
 							.contentType(MediaType.APPLICATION_JSON)
 							.content(asJsonString(user1)))
@@ -659,7 +654,6 @@ class FilmorateApplicationTests {
 
 			User createdUser1 = objectMapper.readValue(response1, User.class);
 
-			// Пытаемся обновить первого пользователя, установив email второго
 			createdUser1.setEmail("user2@email.com");
 
 			assertThrows(ServletException.class, () -> {
@@ -691,11 +685,10 @@ class FilmorateApplicationTests {
 			User createdUser = objectMapper.readValue(response, User.class);
 			createdUser.setBirthday(LocalDate.now().plusYears(1));
 
-			assertThrows(ServletException.class, () -> {
-				mockMvc.perform(put("/users")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(asJsonString(createdUser)));
-			});
+			mockMvc.perform(put("/users")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(asJsonString(createdUser)))
+					.andExpect(status().isBadRequest());
 		}
 
 		@Test
@@ -719,7 +712,6 @@ class FilmorateApplicationTests {
 
 			User createdUser = objectMapper.readValue(response, User.class);
 
-			// Обновляем только имя
 			User updateUser = new User(
 					createdUser.getId(),
 					null,
