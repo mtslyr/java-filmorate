@@ -1,8 +1,6 @@
 package ru.yandex.practicum.filmorate.exception;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
