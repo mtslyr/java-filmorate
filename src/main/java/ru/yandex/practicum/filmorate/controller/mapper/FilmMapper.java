@@ -9,5 +9,6 @@ import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface FilmMapper {
     Film toFilm(FilmRequest filmRequest);
+
     FilmResponse toResponse(Film film);
 }
