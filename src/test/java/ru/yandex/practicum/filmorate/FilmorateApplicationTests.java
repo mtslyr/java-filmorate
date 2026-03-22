@@ -1,7 +1,8 @@
 package ru.yandex.practicum.filmorate;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.ServletException;
+import lombok.SneakyThrows;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,14 +10,25 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import ru.yandex.practicum.filmorate.controller.ExceptionController;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.controller.UserController;
-import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.controller.mapper.FilmMapperImpl;
+import ru.yandex.practicum.filmorate.controller.mapper.UserMapperImpl;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.request.FilmRequest;
+import ru.yandex.practicum.filmorate.model.request.UserRequest;
+import ru.yandex.practicum.filmorate.model.response.FilmResponse;
+import ru.yandex.practicum.filmorate.model.response.UserResponse;
+import ru.yandex.practicum.filmorate.repository.UserStorage;
+import ru.yandex.practicum.filmorate.repository.impl.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.repository.impl.InMemoryUserStorage;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,13 +49,16 @@ class FilmorateApplicationTests {
 		private FilmService filmService;
 		private FilmController filmController;
 
+		private UserStorage userStorage;
+
 		@BeforeEach
 		public void beforeEach() {
-			filmService = new FilmService();
-			filmController = new FilmController(filmService);
+			filmService = new FilmService(new InMemoryFilmStorage(), new InMemoryUserStorage());
+			filmController = new FilmController(filmService, new FilmMapperImpl());
 
 			mockMvc = MockMvcBuilders.standaloneSetup(filmController)
 					.setValidator(new LocalValidatorFactoryBean())
+					.setControllerAdvice(new ExceptionController())
 					.build();
 		}
 
@@ -58,7 +73,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создать фильм - успешное создание")
 		void shouldCreateFilm() throws Exception {
-			Film film = new Film(
+			FilmRequest film = new FilmRequest(
 					null,
 					"name",
 					"description",
@@ -86,7 +101,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Получить все фильмы - не пустой список")
 		void shouldGetNonEmptyFilmsList() throws Exception {
-			Film film = new Film(null, "Test Film", "Description", LocalDate.now(), 120);
+			FilmRequest film = new FilmRequest(null, "Test Film", "Description", LocalDate.now(), 120);
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -102,7 +117,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание фильма с пустым именем - ошибка")
 		void shouldNotCreateFilmWithEmptyName() throws Exception {
-			Film film = new Film(
+			FilmRequest film = new FilmRequest(
 					null,
 					"",
 					"description",
@@ -119,7 +134,7 @@ class FilmorateApplicationTests {
 		@DisplayName("Создание фильма с именем длиннее 50 символов - ошибка")
 		void shouldNotCreateFilmWithLongName() throws Exception {
 			String longName = "A".repeat(51);
-			Film film = new Film(
+			FilmRequest film = new FilmRequest(
 					null,
 					longName,
 					"description",
@@ -135,7 +150,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание фильма с пустой датой релиза - ошибка")
 		void shouldNotCreateFilmWithNullReleaseDate() throws Exception {
-			Film film = new Film(
+			FilmRequest film = new FilmRequest(
 					null,
 					"name",
 					"description",
@@ -149,25 +164,26 @@ class FilmorateApplicationTests {
 		}
 
 		@Test
+		@SneakyThrows
 		@DisplayName("Создание фильма с датой релиза до 28-12-1895 - ошибка")
 		void shouldNotCreateFilmWithInvalidReleaseDate() throws Exception {
-			Film film = new Film(
+			FilmRequest film = new FilmRequest(
 					null,
 					"name",
 					"description",
 					LocalDate.of(1890, 1, 1),
 					100);
 
-			Assertions.assertThrows(ServletException.class, () ->
-							mockMvc.perform(post("/films")
-									.contentType(MediaType.APPLICATION_JSON)
-									.content(asJsonString(film))));
+			mockMvc.perform(post("/films")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(asJsonString(film)))
+					.andExpect(status().isBadRequest());
 		}
 
 		@Test
 		@DisplayName("Создание фильма с отрицательной продолжительностью - ошибка")
 		void shouldNotCreateFilmWithNegativeDuration() throws Exception {
-			Film film = new Film(
+			FilmRequest film = new FilmRequest(
 					null,
 					"name",
 					"description",
@@ -183,7 +199,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Обновление существующего фильма")
 		void shouldUpdateExistingFilm() throws Exception {
-			Film film = new Film(null, "Old Name", "Old Description", LocalDate.now(), 90);
+			FilmRequest film = new FilmRequest(null, "Old Name", "Old Description", LocalDate.now(), 90);
 
 			String response = mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -193,15 +209,18 @@ class FilmorateApplicationTests {
 					.getResponse()
 					.getContentAsString();
 
-			Film createdFilm = objectMapper.readValue(response, Film.class);
+			FilmResponse createdFilm = objectMapper.readValue(response, FilmResponse.class);
 
-			createdFilm.setName("New Name");
-			createdFilm.setDescription("New Description");
-			createdFilm.setDuration(120);
+			FilmRequest updateFilm = new FilmRequest(
+					createdFilm.id(),
+					"New Name",
+					"New Description",
+					createdFilm.releaseDate(),
+					120);
 
 			mockMvc.perform(put("/films")
 							.contentType(MediaType.APPLICATION_JSON)
-							.content(asJsonString(createdFilm)))
+							.content(asJsonString(updateFilm)))
 					.andExpect(status().isOk())
 					.andExpect(jsonPath("$.name", is("New Name")))
 					.andExpect(jsonPath("$.description", is("New Description")))
@@ -211,18 +230,18 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Обновление несуществующего фильма - ошибка")
 		void shouldNotUpdateNonExistingFilm() throws Exception {
-			Film film = new Film(999L, "Name", "Description", LocalDate.now(), 100);
+			FilmRequest film = new FilmRequest(999L, "Name", "Description", LocalDate.now(), 100);
 
-			Assertions.assertThrows(ServletException.class, () ->
-							mockMvc.perform(put("/films")
-							.contentType(MediaType.APPLICATION_JSON)
-							.content(asJsonString(film))));
+			mockMvc.perform(put("/films")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(asJsonString(film)))
+					.andExpect(status().isNotFound());
 		}
 
 		@Test
 		@DisplayName("Обновление фильма с пустым ID - ошибка")
 		void shouldNotUpdateFilmWithNullId() throws Exception {
-			Film film = new Film(null, "Name", "Description", LocalDate.now(), 100);
+			FilmRequest film = new FilmRequest(null, "Name", "Description", LocalDate.now(), 100);
 
 			mockMvc.perform(put("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -233,8 +252,8 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Проверка автогенерации ID при создании")
 		void shouldGenerateIdOnCreate() throws Exception {
-			Film film1 = new Film(null, "Film 1", "Desc 1", LocalDate.now(), 90);
-			Film film2 = new Film(null, "Film 2", "Desc 2", LocalDate.now(), 120);
+			FilmRequest film1 = new FilmRequest(null, "Film 1", "Desc 1", LocalDate.now(), 90);
+			FilmRequest film2 = new FilmRequest(null, "Film 2", "Desc 2", LocalDate.now(), 120);
 
 			String response1 = mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -252,18 +271,18 @@ class FilmorateApplicationTests {
 					.getResponse()
 					.getContentAsString();
 
-			Film savedFilm1 = objectMapper.readValue(response1, Film.class);
-			Film savedFilm2 = objectMapper.readValue(response2, Film.class);
+			FilmResponse savedFilm1 = objectMapper.readValue(response1, FilmResponse.class);
+			FilmResponse savedFilm2 = objectMapper.readValue(response2, FilmResponse.class);
 
-			Assertions.assertNotNull(savedFilm1.getId());
-			Assertions.assertNotNull(savedFilm2.getId());
-			Assertions.assertNotEquals(savedFilm1.getId(), savedFilm2.getId());
+			Assertions.assertNotNull(savedFilm1.id());
+			Assertions.assertNotNull(savedFilm2.id());
+			Assertions.assertNotEquals(savedFilm1.id(), savedFilm2.id());
 		}
 
 		@Test
 		@DisplayName("Частичное обновление фильма (только имя)")
 		void shouldPartiallyUpdateFilmName() throws Exception {
-			Film film = new Film(null, "Old Name", "Description", LocalDate.now(), 90);
+			FilmRequest film = new FilmRequest(null, "Old Name", "Description", LocalDate.now(), 90);
 
 			String response = mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -273,8 +292,13 @@ class FilmorateApplicationTests {
 					.getResponse()
 					.getContentAsString();
 
-			Film createdFilm = objectMapper.readValue(response, Film.class);
-			Film updateFilm = new Film(createdFilm.getId(), "New Name", null, null, null);
+			FilmResponse createdFilm = objectMapper.readValue(response, FilmResponse.class);
+			FilmRequest updateFilm = new FilmRequest(
+					createdFilm.id(),
+					"New Name",
+					null,
+					null,
+					null);
 
 			mockMvc.perform(put("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -289,7 +313,7 @@ class FilmorateApplicationTests {
 		@DisplayName("Создание фильма с описанием длиннее 200 символов - ошибка")
 		void shouldNotCreateFilmWithLongDescription() throws Exception {
 			String longDescription = "A".repeat(201);
-			Film film = new Film(
+			FilmRequest film = new FilmRequest(
 					null,
 					"name",
 					longDescription,
@@ -300,6 +324,27 @@ class FilmorateApplicationTests {
 							.contentType(MediaType.APPLICATION_JSON)
 							.content(asJsonString(film)))
 					.andExpect(status().isBadRequest());
+		}
+
+		@Test
+		@SneakyThrows
+		@DisplayName("GET /films/{id} - 200")
+		void shouldReturnFilmById() {
+			FilmRequest film = new FilmRequest(null, "Old Name", "Description", LocalDate.now(), 90);
+
+			String response = mockMvc.perform(post("/films")
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(asJsonString(film)))
+					.andExpect(status().isOk())
+					.andReturn()
+					.getResponse()
+					.getContentAsString();
+
+			String filmId = String.valueOf(
+					objectMapper.readValue(response, FilmResponse.class).id());
+
+			mockMvc.perform(get("/films/".concat(filmId)))
+					.andExpect(status().isOk());
 		}
 	}
 
@@ -315,11 +360,12 @@ class FilmorateApplicationTests {
 
 		@BeforeEach
 		public void beforeEach() {
-			userService = new UserService();
-			userController = new UserController(userService);
+			userService = new UserService(new InMemoryUserStorage());
+			userController = new UserController(userService, new UserMapperImpl());
 
 			mockMvc = MockMvcBuilders.standaloneSetup(userController)
 					.setValidator(new LocalValidatorFactoryBean())
+					.setControllerAdvice(new ExceptionController())
 					.build();
 		}
 
@@ -334,7 +380,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создать пользователя - успешное создание")
 		void shouldCreateUser() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -356,7 +402,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создать пользователя с пустым именем - имя должно стать логином")
 		void shouldSetNameAsLoginWhenNameIsEmpty() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -383,7 +429,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Получить всех пользователей - не пустой список")
 		void shouldGetNonEmptyUsersList() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -406,7 +452,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание пользователя с пустым email - ошибка")
 		void shouldNotCreateUserWithEmptyEmail() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"",
 					"login123",
@@ -423,7 +469,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание пользователя с email без @ - ошибка")
 		void shouldNotCreateUserWithInvalidEmail() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"invalid-email",
 					"login123",
@@ -440,7 +486,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание пользователя с пустым логином - ошибка")
 		void shouldNotCreateUserWithEmptyLogin() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"",
@@ -457,7 +503,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание пользователя с логином, содержащим пробелы - ошибка")
 		void shouldNotCreateUserWithLoginContainingSpaces() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login with spaces",
@@ -474,7 +520,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание пользователя с логином, содержащим спецсимволы - ошибка")
 		void shouldNotCreateUserWithLoginContainingSpecialChars() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login@#$%",
@@ -491,7 +537,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание пользователя с пустой датой рождения - ошибка 400")
 		void shouldNotCreateUserWithNullBirthday() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -508,7 +554,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Создание пользователя с датой рождения в будущем - ошибка")
 		void shouldNotCreateUserWithFutureBirthday() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -523,9 +569,10 @@ class FilmorateApplicationTests {
 		}
 
 		@Test
+		@SneakyThrows
 		@DisplayName("Создание пользователя с существующим email - ошибка")
 		void shouldNotCreateUserWithExistingEmail() throws Exception {
-			User user1 = new User(
+			UserRequest user1 = new UserRequest(
 					null,
 					"same@email.com",
 					"login1",
@@ -533,7 +580,7 @@ class FilmorateApplicationTests {
 					LocalDate.now().minusYears(20)
 			);
 
-			User user2 = new User(
+			UserRequest user2 = new UserRequest(
 					null,
 					"same@email.com",
 					"login2",
@@ -546,17 +593,16 @@ class FilmorateApplicationTests {
 							.content(asJsonString(user1)))
 					.andExpect(status().isOk());
 
-			assertThrows(ServletException.class, () -> {
-				mockMvc.perform(post("/users")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(asJsonString(user2)));
-			});
+			mockMvc.perform(post("/users")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(asJsonString(user2)))
+					.andExpect(status().isBadRequest());
 		}
 
 		@Test
 		@DisplayName("Обновление существующего пользователя")
 		void shouldUpdateExistingUser() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -572,24 +618,35 @@ class FilmorateApplicationTests {
 					.getResponse()
 					.getContentAsString();
 
-			User createdUser = objectMapper.readValue(response, User.class);
+			UserResponse createdUser = objectMapper.readValue(response, UserResponse.class);
 
-			createdUser.setName("New Name");
-			createdUser.setEmail("newemail@test.com");
+			UserRequest updateUser = new UserRequest(
+					createdUser.id(),
+					"newemail@test.com",
+					createdUser.login(),
+					"New Name",
+					createdUser.birthday());
 
-			mockMvc.perform(put("/users")
+			response = mockMvc.perform(put("/users")
 							.contentType(MediaType.APPLICATION_JSON)
-							.content(asJsonString(createdUser)))
+							.content(asJsonString(updateUser)))
 					.andExpect(status().isOk())
-					.andExpect(jsonPath("$.name").value("New Name"))
-					.andExpect(jsonPath("$.email").value("newemail@test.com"))
-					.andExpect(jsonPath("$.login").value("login123"));
+					.andReturn()
+					.getResponse()
+					.getContentAsString();
+
+			UserResponse updatedUser = objectMapper.readValue(response, UserResponse.class);
+
+			assertEquals(updatedUser.name(), "New Name");
+			assertEquals(updatedUser.email(), "newemail@test.com");
+			assertEquals(updatedUser.login(), "login123");
 		}
 
 		@Test
+		@SneakyThrows
 		@DisplayName("Обновление несуществующего пользователя - ошибка")
 		void shouldNotUpdateNonExistingUser() {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					999L,
 					"email@test.com",
 					"login123",
@@ -597,17 +654,16 @@ class FilmorateApplicationTests {
 					LocalDate.now().minusYears(20)
 			);
 
-			assertThrows(ServletException.class, () -> {
-				mockMvc.perform(put("/users")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(asJsonString(user)));
-			});
+			mockMvc.perform(put("/users")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(asJsonString(user)))
+					.andExpect(status().isNotFound());
 		}
 
 		@Test
 		@DisplayName("Обновление пользователя с пустым ID - ошибка")
 		void shouldNotUpdateUserWithNullId() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -624,7 +680,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Обновление пользователя с email, который уже используется - ошибка")
 		void shouldNotUpdateUserWithExistingEmail() throws Exception {
-			User user1 = new User(
+			UserRequest user1 = new UserRequest(
 					null,
 					"user1@email.com",
 					"login1",
@@ -632,7 +688,7 @@ class FilmorateApplicationTests {
 					LocalDate.now().minusYears(20)
 			);
 
-			User user2 = new User(
+			UserRequest user2 = new UserRequest(
 					null,
 					"user2@email.com",
 					"login2",
@@ -653,21 +709,25 @@ class FilmorateApplicationTests {
 							.content(asJsonString(user2)))
 					.andExpect(status().isOk());
 
-			User createdUser1 = objectMapper.readValue(response1, User.class);
+			UserResponse createdUser1 = objectMapper.readValue(response1, UserResponse.class);
 
-			createdUser1.setEmail("user2@email.com");
+			UserRequest updateUser = new UserRequest(
+					createdUser1.id(),
+					"user2@email.com",
+					createdUser1.login(),
+					createdUser1.name(),
+					createdUser1.birthday());
 
-			assertThrows(ServletException.class, () -> {
-				mockMvc.perform(put("/users")
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(asJsonString(createdUser1)));
-			});
+			mockMvc.perform(put("/users")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(asJsonString(updateUser)))
+					.andExpect(status().isBadRequest());
 		}
 
 		@Test
 		@DisplayName("Обновление пользователя с датой рождения в будущем - ошибка")
 		void shouldNotUpdateUserWithFutureBirthday() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -683,19 +743,25 @@ class FilmorateApplicationTests {
 					.getResponse()
 					.getContentAsString();
 
-			User createdUser = objectMapper.readValue(response, User.class);
-			createdUser.setBirthday(LocalDate.now().plusYears(1));
+			UserResponse createdUser = objectMapper.readValue(response, UserResponse.class);
+
+			UserRequest updateUser = new UserRequest(
+					createdUser.id(),
+					createdUser.email(),
+					createdUser.login(),
+					createdUser.name(),
+					LocalDate.now().plusYears(1));
 
 			mockMvc.perform(put("/users")
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(asJsonString(createdUser)))
+					.content(asJsonString(updateUser)))
 					.andExpect(status().isBadRequest());
 		}
 
 		@Test
 		@DisplayName("Частичное обновление пользователя (только имя)")
 		void shouldPartiallyUpdateUserName() throws Exception {
-			User user = new User(
+			UserRequest user = new UserRequest(
 					null,
 					"email@test.com",
 					"login123",
@@ -711,10 +777,10 @@ class FilmorateApplicationTests {
 					.getResponse()
 					.getContentAsString();
 
-			User createdUser = objectMapper.readValue(response, User.class);
+			UserResponse createdUser = objectMapper.readValue(response, UserResponse.class);
 
-			User updateUser = new User(
-					createdUser.getId(),
+			UserRequest updateUser = new UserRequest(
+					createdUser.id(),
 					null,
 					null,
 					"New Name",
@@ -733,7 +799,7 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Проверка автогенерации ID при создании")
 		void shouldGenerateIdOnCreate() throws Exception {
-			User user1 = new User(
+			UserRequest user1 = new UserRequest(
 					null,
 					"email1@test.com",
 					"login1",
@@ -741,7 +807,7 @@ class FilmorateApplicationTests {
 					LocalDate.now().minusYears(20)
 			);
 
-			User user2 = new User(
+			UserRequest user2 = new UserRequest(
 					null,
 					"email2@test.com",
 					"login2",
@@ -765,12 +831,270 @@ class FilmorateApplicationTests {
 					.getResponse()
 					.getContentAsString();
 
-			User savedUser1 = objectMapper.readValue(response1, User.class);
-			User savedUser2 = objectMapper.readValue(response2, User.class);
+			UserResponse savedUser1 = objectMapper.readValue(response1, UserResponse.class);
+			UserResponse savedUser2 = objectMapper.readValue(response2, UserResponse.class);
 
-			assertNotNull(savedUser1.getId());
-			assertNotNull(savedUser2.getId());
-			assertNotEquals(savedUser1.getId(), savedUser2.getId());
+			assertNotNull(savedUser1.id());
+			assertNotNull(savedUser2.id());
+			assertNotEquals(savedUser1.id(), savedUser2.id());
 		}
+
+		@Test
+		@SneakyThrows
+		@DisplayName("GET /users/{id} - 200")
+		void shouldReturnUserById() {
+			UserRequest user = new UserRequest(
+					null,
+					"email1@test.com",
+					"login1",
+					"Name1",
+					LocalDate.now().minusYears(20)
+			);
+
+			String response = mockMvc.perform(post("/users")
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(asJsonString(user)))
+					.andExpect(status().isOk())
+					.andReturn()
+					.getResponse()
+					.getContentAsString();
+
+			String userId = String.valueOf(
+					objectMapper.readValue(response, UserResponse.class).id());
+
+			mockMvc.perform(get("/users/".concat(userId)))
+					.andExpect(status().isOk());
+		}
+
+//		@Test
+//		@SneakyThrows
+//		@DisplayName("PUT /users/{id}/friends/{friendId} - 200")
+//		void shouldAddToFriendsList() {
+//			UserRequest user1 = new UserRequest(
+//					null,
+//					"email1@test.com",
+//					"login1",
+//					"Name1",
+//					LocalDate.now().minusYears(20)
+//			);
+//
+//			String response1 = mockMvc.perform(post("/users")
+//							.contentType(MediaType.APPLICATION_JSON)
+//							.content(asJsonString(user1)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			UserRequest user2 = new UserRequest(
+//					null,
+//					"email2@test.com",
+//					"login2",
+//					"Name2",
+//					LocalDate.now().minusYears(20)
+//			);
+//
+//			String response2 = mockMvc.perform(post("/users")
+//							.contentType(MediaType.APPLICATION_JSON)
+//							.content(asJsonString(user2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			String userId1 = String.valueOf(
+//					objectMapper.readValue(response1, UserResponse.class).id());
+//
+//			String userId2 = String.valueOf(
+//					objectMapper.readValue(response2, UserResponse.class).id());
+//
+//			response1 = mockMvc.perform(put("/users/%s/friends/%s".formatted(userId1, userId2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			UserResponse user = objectMapper.readValue(response1, UserResponse.class);
+//
+//			assertTrue(
+//					user.friends().contains(Long.parseLong(userId2))
+//			);
+//
+//			response2 = mockMvc.perform(get("/users/%s".formatted(userId2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			user = objectMapper.readValue(response2, UserResponse.class);
+//
+//			assertTrue(
+//					user.friends().contains(Long.parseLong(userId1))
+//			);
+//		}
+//
+//		@Test
+//		@SneakyThrows
+//		@DisplayName("DELETE /users/{id}/friends/{friendId} - 200")
+//		void shouldDeleteFriend() {
+//			UserRequest user1 = new UserRequest(
+//					null,
+//					"email1@test.com",
+//					"login1",
+//					"Name1",
+//					LocalDate.now().minusYears(20)
+//			);
+//
+//			String response1 = mockMvc.perform(post("/users")
+//							.contentType(MediaType.APPLICATION_JSON)
+//							.content(asJsonString(user1)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			UserRequest user2 = new UserRequest(
+//					null,
+//					"email2@test.com",
+//					"login2",
+//					"Name2",
+//					LocalDate.now().minusYears(20)
+//			);
+//
+//			String response2 = mockMvc.perform(post("/users")
+//							.contentType(MediaType.APPLICATION_JSON)
+//							.content(asJsonString(user2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			String userId1 = String.valueOf(
+//					objectMapper.readValue(response1, UserResponse.class).id());
+//
+//			String userId2 = String.valueOf(
+//					objectMapper.readValue(response2, UserResponse.class).id());
+//
+//			response1 = mockMvc.perform(put("/users/%s/friends/%s".formatted(userId1, userId2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			UserResponse user = objectMapper.readValue(response1, UserResponse.class);
+//
+//			assertTrue(
+//					user.friends().contains(Long.parseLong(userId2))
+//			);
+//
+//			response2 = mockMvc.perform(get("/users/%s".formatted(userId2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			user = objectMapper.readValue(response2, UserResponse.class);
+//
+//			assertTrue(
+//					user.friends().contains(Long.parseLong(userId1))
+//			);
+//
+//			response1 = mockMvc.perform(delete("/users/%s/friends/%s".formatted(userId1, userId2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			user = objectMapper.readValue(response1, UserResponse.class);
+//
+//			assertFalse(
+//					user.friends().contains(Long.parseLong(userId2))
+//			);
+//
+//			response2 = mockMvc.perform(get("/users/%s".formatted(userId2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			user = objectMapper.readValue(response2, UserResponse.class);
+//
+//			assertFalse(
+//					user.friends().contains(Long.parseLong(userId1))
+//			);
+//		}
+//
+//		@Test
+//		@SneakyThrows
+//		@DisplayName("GET /users/{id}/friends - 200")
+//		void shouldReturnFriendsList() {
+//			UserRequest user1 = new UserRequest(
+//					null,
+//					"email1@test.com",
+//					"login1",
+//					"Name1",
+//					LocalDate.now().minusYears(20)
+//			);
+//
+//			String response1 = mockMvc.perform(post("/users")
+//							.contentType(MediaType.APPLICATION_JSON)
+//							.content(asJsonString(user1)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			UserRequest user2 = new UserRequest(
+//					null,
+//					"email2@test.com",
+//					"login2",
+//					"Name2",
+//					LocalDate.now().minusYears(20)
+//			);
+//
+//			String response2 = mockMvc.perform(post("/users")
+//							.contentType(MediaType.APPLICATION_JSON)
+//							.content(asJsonString(user2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			String userId1 = String.valueOf(
+//					objectMapper.readValue(response1, UserResponse.class).id());
+//
+//			String userId2 = String.valueOf(
+//					objectMapper.readValue(response2, UserResponse.class).id());
+//
+//			response1 = mockMvc.perform(get("/users/%s/friends".formatted(userId1)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			List<User> friends = objectMapper.readValue(response1, new TypeReference<List<User>>() {});
+//
+//			assertTrue(
+//					friends.isEmpty()
+//			);
+//
+//			mockMvc.perform(put("/users/%s/friends/%s".formatted(userId1, userId2)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			response1 = mockMvc.perform(get("/users/%s/friends".formatted(userId1)))
+//					.andExpect(status().isOk())
+//					.andReturn()
+//					.getResponse()
+//					.getContentAsString();
+//
+//			friends = objectMapper.readValue(response1, new TypeReference<List<User>>() {});
+//
+//			assertTrue(
+//					friends.get(0).getId().equals(Long.parseLong(userId1))
+//			);
+//		}
 	}
 }

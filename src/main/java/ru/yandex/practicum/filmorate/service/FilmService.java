@@ -4,72 +4,41 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ApiException;
+import ru.yandex.practicum.filmorate.exception.FilmNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.response.FilmResponse;
+import ru.yandex.practicum.filmorate.repository.FilmStorage;
+import ru.yandex.practicum.filmorate.repository.UserStorage;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Comparator;
 import java.util.function.Predicate;
 
 @Service
 @RequiredArgsConstructor
 public class FilmService {
-    private final Map<Long, Film> films = new HashMap<>();
+
+    private final FilmStorage filmStorage;
+    private final UserStorage userStorage;
 
     public Collection<Film> getAllFilms() {
-        return films.values();
+        return filmStorage.getAll();
     }
 
     public Film createFilm(Film film) throws ApiException {
         validateReleaseDate(film);
-        film.setId(getNextId());
-        films.put(film.getId(), film);
-        return film;
+        return filmStorage.save(film);
     }
 
-    public Film updateFilm(Film film)
-            throws ApiException {
-        Film oldFilm = films.get(film.getId());
-
-        if (oldFilm == null) {
-            throw new ApiException(
-                    "Фильм не найден",
-                    "id",
-                    film.getId().toString(),
-                    HttpStatus.NOT_FOUND
-            );
-        }
-
-        if (film.getDescription() != null) {
-            oldFilm.setDescription(film.getDescription());
-        }
-
-        if (film.getName() != null) {
-            oldFilm.setName(film.getName());
-        }
-
+    public Film updateFilm(Film film) throws ApiException {
         if (film.getReleaseDate() != null) {
             validateReleaseDate(film);
-            oldFilm.setReleaseDate(film.getReleaseDate());
         }
 
-        if (film.getDuration() != null) {
-            oldFilm.setDuration(film.getDuration());
-        }
-
-        return oldFilm;
-    }
-
-    private long getNextId() {
-        long currentMaxId = films.keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0);
-
-        return ++currentMaxId;
+        return filmStorage.update(film);
     }
 
     private void validateReleaseDate(Film film) {
@@ -87,7 +56,32 @@ public class FilmService {
         }
     }
 
-    public Map<Long, Film> getStorage() {
-        return Map.copyOf(films);
+    public Film getById(Long id) {
+        Film film = filmStorage.getById(id);
+        return film;
+    }
+
+    public Film likeFilm(long filmId, long userId) {
+        Film film = filmStorage.getById(filmId);
+        film.getLikes().add(userId);
+        User user = userStorage.getById(userId);
+        user.getFavouriteFilms().add(film);
+        return film;
+    }
+
+    public Film dislikeFilm(long filmId, long userId) {
+        Film film = filmStorage.getById(filmId);
+        film.getLikes().remove(userId);
+        User user = userStorage.getById(userId);
+        user.getFavouriteFilms().remove(filmId);
+        return film;
+    }
+
+    public Collection<Film> getPopularFilms(int count) {
+        return filmStorage.getAll()
+                .stream()
+                .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
+                .limit(count)
+                .toList();
     }
 }

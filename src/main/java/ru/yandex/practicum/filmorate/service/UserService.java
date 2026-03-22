@@ -1,83 +1,48 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ApiException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.response.Friend;
+import ru.yandex.practicum.filmorate.repository.UserStorage;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserService {
-    private final Map<Long, User> users = new HashMap<>();
+
+    private final UserStorage userStorage;
 
     public Collection<User> getAllUsers() {
-        return users.values();
+        return userStorage.getAll();
     }
 
-    public User createUser(User user) throws ApiException {
-        validateEmailIsNotUsed(user);
-
-        user.setId(getNextId());
-        if (user.getName() == null) {
-            user.setName(user.getLogin());
-        }
-
-        users.put(user.getId(), user);
-
-        return user;
+    public User createUser(User user)  {
+        validate(user);
+        return userStorage.save(user);
     }
 
-    private long getNextId() {
-        long currentMaxId = users.keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0);
-
-        return ++currentMaxId;
-    }
-
-    public User updateUser(User user)
-            throws ApiException {
-        User oldUser = users.get(user.getId());
-
-        if (oldUser == null) {
-            throw new ApiException(
-                    "Пользователь не найден",
-                    "id",
-                    user.getId().toString(),
-                    HttpStatus.NOT_FOUND);
-        }
-
-        if (user.getName() != null) {
-            oldUser.setName(user.getName());
-        }
-
-        if (user.getLogin() != null) {
-            oldUser.setLogin(user.getLogin());
-        }
+    public User updateUser(User user) {
+        userStorage.getById(user.getId());
 
         if (user.getEmail() != null) {
             validateEmailIsNotUsed(user);
-            oldUser.setEmail(user.getEmail());
         }
 
-        if (user.getBirthday() != null) {
-            oldUser.setBirthday(user.getBirthday());
-        }
-
-        return oldUser;
+        return userStorage.update(user);
     }
 
-    private void validateEmailIsNotUsed(User user) throws ApiException {
-        boolean isUsed = users.values()
+    private void validateEmailIsNotUsed(User user) {
+        boolean isUsed = userStorage.getAll()
                 .stream()
-                .anyMatch(u -> u.getEmail().equals(user.getEmail()));
+                .anyMatch(u -> !u.getId().equals(user.getId()) && u.getEmail().equals(user.getEmail()));
 
         if (isUsed) {
             throw new ApiException(
@@ -87,5 +52,48 @@ public class UserService {
                     HttpStatus.BAD_REQUEST
             );
         }
+    }
+
+    private void validate(User user) {
+        validateEmailIsNotUsed(user);
+        if (user.getName() == null) {
+            user.setName(user.getLogin());
+        }
+    }
+
+    public User getUserById(Long userId) {
+        return userStorage.getById(userId);
+    }
+
+    public User addFriend(long userId, long friendId) {
+        User user = userStorage.getById(userId);
+        User friend = userStorage.getById(friendId);
+
+        user.getFriends().add(new Friend(friend));
+        friend.getFriends().add(new Friend(user));
+        return user;
+    }
+
+    public User deleteFriend(long userId, long friendId) {
+        User user = userStorage.getById(userId);
+        User friend = userStorage.getById(friendId);
+        user.getFriends().removeIf(fr -> fr.getId().equals(friendId));
+        friend.getFriends().removeIf(fr -> fr.getId().equals(userId));
+
+        return user;
+    }
+
+    public Set<Friend> getFriendsList(long id) {
+        User user = userStorage.getById(id);
+        return user.getFriends();
+    }
+
+    public Set<Friend> getCommonFriends(long userId, long otherId) {
+        User user = userStorage.getById(userId);
+        User other = userStorage.getById(otherId);
+
+        return user.getFriends().stream()
+                .filter(other.getFriends()::contains)
+                .collect(Collectors.toSet());
     }
 }
