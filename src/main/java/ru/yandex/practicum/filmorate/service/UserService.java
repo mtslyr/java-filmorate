@@ -4,9 +4,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.controller.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.exception.ApiException;
+import ru.yandex.practicum.filmorate.exception.SameIdException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.request.UserRequest;
 import ru.yandex.practicum.filmorate.model.response.Friend;
+import ru.yandex.practicum.filmorate.model.response.UserResponse;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
 
 import java.util.Collection;
@@ -19,24 +23,32 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserStorage userStorage;
+    private final UserMapper mapper;
 
-    public Collection<User> getAllUsers() {
-        return userStorage.getAll();
+    public Collection<UserResponse> getAllUsers() {
+        return userStorage.getAll()
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
     }
 
-    public User createUser(User user)  {
+    public UserResponse createUser(UserRequest request)  {
+        User user = mapper.toUser(request);
         validate(user);
-        return userStorage.save(user);
+        User saved = userStorage.save(user);
+        return mapper.toResponse(saved);
     }
 
-    public User updateUser(User user) {
-        userStorage.getById(user.getId());
+    public UserResponse updateUser(UserRequest request) {
+        userStorage.getById(request.getId());
+        User user = mapper.toUser(request);
 
         if (user.getEmail() != null) {
             validateEmailIsNotUsed(user);
         }
 
-        return userStorage.update(user);
+        User updated = userStorage.update(user);
+        return mapper.toResponse(updated);
     }
 
     private void validateEmailIsNotUsed(User user) {
@@ -61,34 +73,47 @@ public class UserService {
         }
     }
 
-    public User getUserById(Long userId) {
-        return userStorage.getById(userId);
+    public UserResponse getUserById(Long userId) {
+        User user = userStorage.getById(userId);
+        return mapper.toResponse(user);
     }
 
-    public User addFriend(long userId, long friendId) {
+    public UserResponse addFriend(Long userId, Long friendId) {
+        if (userId.equals(friendId)) {
+            throw new SameIdException(userId, friendId);
+        }
+
         User user = userStorage.getById(userId);
         User friend = userStorage.getById(friendId);
 
         user.getFriends().add(new Friend(friend));
         friend.getFriends().add(new Friend(user));
-        return user;
+        return mapper.toResponse(user);
     }
 
-    public User deleteFriend(long userId, long friendId) {
+    public UserResponse deleteFriend(Long userId, Long friendId) {
+        if (userId.equals(friendId)) {
+            throw new SameIdException(userId, friendId);
+        }
+
         User user = userStorage.getById(userId);
         User friend = userStorage.getById(friendId);
         user.getFriends().removeIf(fr -> fr.getId().equals(friendId));
         friend.getFriends().removeIf(fr -> fr.getId().equals(userId));
 
-        return user;
+        return mapper.toResponse(user);
     }
 
-    public Set<Friend> getFriendsList(long id) {
+    public Set<Friend> getFriendsList(Long id) {
         User user = userStorage.getById(id);
         return user.getFriends();
     }
 
-    public Set<Friend> getCommonFriends(long userId, long otherId) {
+    public Set<Friend> getCommonFriends(Long userId, Long otherId) {
+        if (userId.equals(otherId)) {
+            throw new SameIdException(userId, otherId);
+        }
+
         User user = userStorage.getById(userId);
         User other = userStorage.getById(otherId);
 
