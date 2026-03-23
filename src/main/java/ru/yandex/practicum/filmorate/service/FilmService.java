@@ -82,7 +82,7 @@ public class FilmService {
         Film film = filmStorage.getById(filmId);
         film.getLikes().remove(userId);
         User user = userStorage.getById(userId);
-        user.getFavouriteFilms().remove(filmId);
+        user.getFavouriteFilms().removeIf(f -> f.getId().equals(filmId));
         return mapper.toResponse(film);
     }
 
