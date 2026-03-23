@@ -3,9 +3,12 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.controller.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.exception.ApiException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.request.FilmRequest;
+import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 import ru.yandex.practicum.filmorate.repository.FilmStorage;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
 
@@ -21,22 +24,30 @@ public class FilmService {
 
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
+    private final FilmMapper mapper;
 
-    public Collection<Film> getAllFilms() {
-        return filmStorage.getAll();
+    public Collection<FilmResponse> getAllFilms() {
+        return filmStorage.getAll()
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
     }
 
-    public Film createFilm(Film film) throws ApiException {
+    public FilmResponse createFilm(FilmRequest request) throws ApiException {
+        Film film = mapper.toFilm(request);
         validateReleaseDate(film);
-        return filmStorage.save(film);
+        film = filmStorage.save(film);
+        return mapper.toResponse(film);
     }
 
-    public Film updateFilm(Film film) throws ApiException {
+    public FilmResponse updateFilm(FilmRequest request) throws ApiException {
+        Film film = mapper.toFilm(request);
         if (film.getReleaseDate() != null) {
             validateReleaseDate(film);
         }
 
-        return filmStorage.update(film);
+        film = filmStorage.update(film);
+        return mapper.toResponse(film);
     }
 
     private void validateReleaseDate(Film film) {
@@ -54,32 +65,33 @@ public class FilmService {
         }
     }
 
-    public Film getById(Long id) {
+    public FilmResponse getById(Long id) {
         Film film = filmStorage.getById(id);
-        return film;
+        return mapper.toResponse(film);
     }
 
-    public Film likeFilm(long filmId, long userId) {
+    public FilmResponse likeFilm(Long filmId, Long userId) {
         Film film = filmStorage.getById(filmId);
         film.getLikes().add(userId);
         User user = userStorage.getById(userId);
         user.getFavouriteFilms().add(film);
-        return film;
+        return mapper.toResponse(film);
     }
 
-    public Film dislikeFilm(long filmId, long userId) {
+    public FilmResponse dislikeFilm(Long filmId, Long userId) {
         Film film = filmStorage.getById(filmId);
         film.getLikes().remove(userId);
         User user = userStorage.getById(userId);
         user.getFavouriteFilms().remove(filmId);
-        return film;
+        return mapper.toResponse(film);
     }
 
-    public Collection<Film> getPopularFilms(int count) {
+    public Collection<FilmResponse> getPopularFilms(Integer count) {
         return filmStorage.getAll()
                 .stream()
                 .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
                 .limit(count)
+                .map(mapper::toResponse)
                 .toList();
     }
 }

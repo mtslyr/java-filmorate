@@ -1,10 +1,7 @@
 package ru.yandex.practicum.filmorate.model.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import ru.yandex.practicum.filmorate.validation.OnCreate;
@@ -17,6 +14,7 @@ import java.time.LocalDate;
 public class FilmRequest {
     @NotNull(groups = {OnUpdate.class},
             message = "Id должен быть указан")
+    @Positive(groups = OnUpdate.class)
     private Long id;
 
     @NotBlank(message = "Имя не должно быть пустым",

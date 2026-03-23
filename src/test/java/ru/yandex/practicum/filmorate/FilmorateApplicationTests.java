@@ -49,7 +49,7 @@ class FilmorateApplicationTests {
 
 		@BeforeEach
 		public void beforeEach() {
-			filmService = new FilmService(new InMemoryFilmStorage(), new InMemoryUserStorage());
+			filmService = new FilmService(new InMemoryFilmStorage(), new InMemoryUserStorage(), new FilmMapperImpl());
 			filmController = new FilmController(filmService, new FilmMapperImpl());
 
 			mockMvc = MockMvcBuilders.standaloneSetup(filmController)
@@ -356,8 +356,8 @@ class FilmorateApplicationTests {
 
 		@BeforeEach
 		public void beforeEach() {
-			userService = new UserService(new InMemoryUserStorage());
-			userController = new UserController(userService, new UserMapperImpl());
+			userService = new UserService(new InMemoryUserStorage(), new UserMapperImpl());
+			userController = new UserController(userService);
 
 			mockMvc = MockMvcBuilders.standaloneSetup(userController)
 					.setValidator(new LocalValidatorFactoryBean())
