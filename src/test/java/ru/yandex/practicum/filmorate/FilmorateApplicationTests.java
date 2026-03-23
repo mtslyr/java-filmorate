@@ -50,7 +50,7 @@ class FilmorateApplicationTests {
 		@BeforeEach
 		public void beforeEach() {
 			filmService = new FilmService(new InMemoryFilmStorage(), new InMemoryUserStorage(), new FilmMapperImpl());
-			filmController = new FilmController(filmService, new FilmMapperImpl());
+			filmController = new FilmController(filmService);
 
 			mockMvc = MockMvcBuilders.standaloneSetup(filmController)
 					.setValidator(new LocalValidatorFactoryBean())
