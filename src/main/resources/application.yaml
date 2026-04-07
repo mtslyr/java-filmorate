@@ -1,0 +1,8 @@
+logging:
+  level:
+    org:
+      zalando:
+        logbook: trace
+
+server:
+  port: 8080
