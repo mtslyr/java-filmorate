@@ -2,7 +2,7 @@
 #### https://app.quickdatabasediagrams.com/#/
 
 ```text
-Users
+users
 -
 userId PK int
 email varchar(100) UNIQUE
@@ -11,38 +11,38 @@ name NULL varchar(100)
 bithdate date
 
 # Отношения между пользователями
-UsersRelations
+users_relations
 -
 relationId PK int
-userId int FK >- Users.userId
-relatedId int FK >- Users.userId
-relationStatusId int FK >- UsersRelationStatus.statusId
+userId int FK >- users.userId
+relatedId int FK >- users.userId
+relationStatusId int FK >- users_relations_status.statusId
 
-UsersRelationStatus
+users_relations_status
 -
 statusId PK int
 name varchar(20)
 
-Films
+films
 -
 filmId PK int
 name varchar(100)
 description varchar(200)
 releaseDate date
 duration int
-genreId int FK >- FilmGenres.genreId
+genreId int FK >- films_genres.genreId
 rateId int
 
-FilmGenres
+films_genres
 -
 genreId PK int
 name varchar(10)
 description varchar(100) NULL
 
-FilmLikes
+film_likes
 --
 likeId PK int
-userId int FK >- Users.userId
-filmId int FK >- Films.filmId
+userId int FK >- users.userId
+filmId int FK >- films.filmId
 likeDate datetime
 ```
