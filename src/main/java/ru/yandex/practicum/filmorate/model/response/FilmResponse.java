@@ -1,6 +1,9 @@
 package ru.yandex.practicum.filmorate.model.response;
 
 
+import ru.yandex.practicum.filmorate.model.enums.FilmGenre;
+import ru.yandex.practicum.filmorate.model.enums.FilmRating;
+
 import java.time.LocalDate;
 import java.util.Set;
 
@@ -10,6 +13,8 @@ public record FilmResponse(
         String description,
         LocalDate releaseDate,
         Integer duration,
-        Set<Long> likes
+        Set<Long> likes,
+        FilmGenre genre,
+        FilmRating rating
 ) {
 }

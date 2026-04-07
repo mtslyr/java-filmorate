@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Value;
+import ru.yandex.practicum.filmorate.model.enums.FilmGenre;
+import ru.yandex.practicum.filmorate.model.enums.FilmRating;
 import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
@@ -40,4 +42,12 @@ public class FilmRequest {
             groups = {OnCreate.class})
     @Min(value = 0, groups = {OnCreate.class, OnUpdate.class})
     private Integer duration;
+
+    @NotNull(message = "Жанр фильма должен быть указан",
+            groups = {OnCreate.class})
+    private FilmGenre genre;
+
+    @NotNull(message = "Рейтинг фильма должен быть указан",
+            groups = {OnCreate.class})
+    private FilmRating rating;
 }

@@ -1,6 +1,8 @@
 package ru.yandex.practicum.filmorate.model;
 
 import lombok.*;
+import ru.yandex.practicum.filmorate.model.enums.FilmGenre;
+import ru.yandex.practicum.filmorate.model.enums.FilmRating;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -20,4 +22,6 @@ public class Film {
     private LocalDate releaseDate;
     private Integer duration;
     private Set<Long> likes;
+    private FilmGenre genre;
+    private FilmRating rating;
 }
