@@ -16,6 +16,8 @@ import ru.yandex.practicum.filmorate.controller.mapper.FilmMapperImpl;
 import ru.yandex.practicum.filmorate.controller.mapper.UserMapperImpl;
 import ru.yandex.practicum.filmorate.model.request.FilmRequest;
 import ru.yandex.practicum.filmorate.model.request.UserRequest;
+import ru.yandex.practicum.filmorate.model.enums.FilmGenre;
+import ru.yandex.practicum.filmorate.model.enums.FilmRating;
 import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 import ru.yandex.practicum.filmorate.model.response.UserResponse;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
@@ -74,7 +76,9 @@ class FilmorateApplicationTests {
 					"name",
 					"description",
 					LocalDate.now().minusYears(10),
-					100);
+					100,
+					FilmGenre.COMEDY, //
+					FilmRating.G);    //
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -97,7 +101,14 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Получить все фильмы - не пустой список")
 		void shouldGetNonEmptyFilmsList() throws Exception {
-			FilmRequest film = new FilmRequest(null, "Test Film", "Description", LocalDate.now(), 120);
+			FilmRequest film = new FilmRequest(
+					null,
+					"Test Film",
+					"Description",
+					LocalDate.now(),
+					120,
+					FilmGenre.DRAMA,
+					FilmRating.PG);
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -118,7 +129,9 @@ class FilmorateApplicationTests {
 					"",
 					"description",
 					LocalDate.now(),
-					100);
+					100,
+					FilmGenre.ACTION,
+					FilmRating.G);
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -135,7 +148,9 @@ class FilmorateApplicationTests {
 					longName,
 					"description",
 					LocalDate.now(),
-					100);
+					100,
+					FilmGenre.DRAMA,
+					FilmRating.G);
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -151,7 +166,9 @@ class FilmorateApplicationTests {
 					"name",
 					"description",
 					null,
-					100);
+					100,
+					FilmGenre.CARTOON,
+					FilmRating.G);
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -168,11 +185,13 @@ class FilmorateApplicationTests {
 					"name",
 					"description",
 					LocalDate.of(1890, 1, 1),
-					100);
+					100,
+					FilmGenre.COMEDY,
+					FilmRating.G);
 
 			mockMvc.perform(post("/films")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(asJsonString(film)))
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(asJsonString(film)))
 					.andExpect(status().isBadRequest());
 		}
 
@@ -184,7 +203,9 @@ class FilmorateApplicationTests {
 					"name",
 					"description",
 					LocalDate.now(),
-					-10);
+					-10,
+					FilmGenre.THRILLER,
+					FilmRating.G);
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -195,7 +216,14 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Обновление существующего фильма")
 		void shouldUpdateExistingFilm() throws Exception {
-			FilmRequest film = new FilmRequest(null, "Old Name", "Old Description", LocalDate.now(), 90);
+			FilmRequest film = new FilmRequest(
+					null,
+					"Old Name",
+					"Old Description",
+					LocalDate.now(),
+					90,
+					FilmGenre.COMEDY,
+					FilmRating.PG);
 
 			String response = mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -212,7 +240,9 @@ class FilmorateApplicationTests {
 					"New Name",
 					"New Description",
 					createdFilm.releaseDate(),
-					120);
+					120,
+					createdFilm.genre(), // Используем полученные из ответа данные
+					createdFilm.rating());
 
 			mockMvc.perform(put("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -226,18 +256,32 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Обновление несуществующего фильма - ошибка")
 		void shouldNotUpdateNonExistingFilm() throws Exception {
-			FilmRequest film = new FilmRequest(999L, "Name", "Description", LocalDate.now(), 100);
+			FilmRequest film = new FilmRequest(
+					999L,
+					"Name",
+					"Description",
+					LocalDate.now(),
+					100,
+					FilmGenre.DOCUMENTARY,
+					FilmRating.NC_17);
 
 			mockMvc.perform(put("/films")
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(asJsonString(film)))
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(asJsonString(film)))
 					.andExpect(status().isNotFound());
 		}
 
 		@Test
 		@DisplayName("Обновление фильма с пустым ID - ошибка")
 		void shouldNotUpdateFilmWithNullId() throws Exception {
-			FilmRequest film = new FilmRequest(null, "Name", "Description", LocalDate.now(), 100);
+			FilmRequest film = new FilmRequest(
+					null,
+					"Name",
+					"Description",
+					LocalDate.now(),
+					100,
+					FilmGenre.ACTION,
+					FilmRating.R);
 
 			mockMvc.perform(put("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -248,8 +292,8 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Проверка автогенерации ID при создании")
 		void shouldGenerateIdOnCreate() throws Exception {
-			FilmRequest film1 = new FilmRequest(null, "Film 1", "Desc 1", LocalDate.now(), 90);
-			FilmRequest film2 = new FilmRequest(null, "Film 2", "Desc 2", LocalDate.now(), 120);
+			FilmRequest film1 = new FilmRequest(null, "Film 1", "Desc 1", LocalDate.now(), 90, FilmGenre.COMEDY, FilmRating.G);
+			FilmRequest film2 = new FilmRequest(null, "Film 2", "Desc 2", LocalDate.now(), 120, FilmGenre.DRAMA, FilmRating.PG);
 
 			String response1 = mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -278,7 +322,14 @@ class FilmorateApplicationTests {
 		@Test
 		@DisplayName("Частичное обновление фильма (только имя)")
 		void shouldPartiallyUpdateFilmName() throws Exception {
-			FilmRequest film = new FilmRequest(null, "Old Name", "Description", LocalDate.now(), 90);
+			FilmRequest film = new FilmRequest(
+					null,
+					"Old Name",
+					"Description",
+					LocalDate.now(),
+					90,
+					FilmGenre.DRAMA,
+					FilmRating.PG_13);
 
 			String response = mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -292,6 +343,8 @@ class FilmorateApplicationTests {
 			FilmRequest updateFilm = new FilmRequest(
 					createdFilm.id(),
 					"New Name",
+					null,
+					null,
 					null,
 					null,
 					null);
@@ -314,7 +367,9 @@ class FilmorateApplicationTests {
 					"name",
 					longDescription,
 					LocalDate.now(),
-					100);
+					100,
+					FilmGenre.ACTION,
+					FilmRating.R);
 
 			mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -326,7 +381,14 @@ class FilmorateApplicationTests {
 		@SneakyThrows
 		@DisplayName("GET /films/{id} - 200")
 		void shouldReturnFilmById() {
-			FilmRequest film = new FilmRequest(null, "Old Name", "Description", LocalDate.now(), 90);
+			FilmRequest film = new FilmRequest(
+					null,
+					"Old Name",
+					"Description",
+					LocalDate.now(),
+					90,
+					FilmGenre.DOCUMENTARY,
+					FilmRating.G);
 
 			String response = mockMvc.perform(post("/films")
 							.contentType(MediaType.APPLICATION_JSON)
