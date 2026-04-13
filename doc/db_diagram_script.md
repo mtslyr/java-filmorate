@@ -31,11 +31,17 @@ description varchar(200)
 releaseDate date
 duration int
 genreId int FK >- films_genres.genreId
-rateId int
+rateId int FK >- film_rates.rate_id
 
 films_genres
 -
 genreId PK int
+name varchar(10)
+description varchar(100) NULL
+
+film_rates
+-
+rate_id PK int
 name varchar(10)
 description varchar(100) NULL
 

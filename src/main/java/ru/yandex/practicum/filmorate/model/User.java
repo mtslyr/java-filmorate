@@ -10,6 +10,7 @@ import java.util.Set;
 @Setter
 @EqualsAndHashCode(of = {"email", "id"})
 @AllArgsConstructor
+@NoArgsConstructor
 @ToString
 public class User {
     private Long id;
@@ -19,4 +20,8 @@ public class User {
     private LocalDate birthday;
     private Set<Friend> friends;
     private Set<Film> favouriteFilms;
+
+    public Friend toFriend() {
+        return new Friend(this);
+    }
 }
