@@ -1,12 +1,13 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.exception.ApiException;
-import ru.yandex.practicum.filmorate.exception.SameIdException;
+import ru.yandex.practicum.filmorate.exception.user.SameIdException;
+import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.model.request.UserRequest;
 import ru.yandex.practicum.filmorate.model.response.Friend;
@@ -14,16 +15,22 @@ import ru.yandex.practicum.filmorate.model.response.UserResponse;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
 
 import java.util.Collection;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class UserService {
 
+    @Qualifier("H2UserStorage")
     private final UserStorage userStorage;
     private final UserMapper mapper;
+
+    public UserService(@Qualifier("H2UserStorage") UserStorage userStorage, UserMapper mapper) {
+        this.userStorage = userStorage;
+        this.mapper = mapper;
+    }
 
     public Collection<UserResponse> getAllUsers() {
         return userStorage.getAll()
@@ -51,6 +58,57 @@ public class UserService {
         return mapper.toResponse(updated);
     }
 
+    public UserResponse getUserById(Long userId) {
+        User user = userStorage.getById(userId);
+        return mapper.toResponse(user);
+    }
+
+    public UserResponse addFriend(Long userId, Long friendId) {
+        validateUserExist(userId, friendId);
+
+        if (userId.equals(friendId)) {
+            throw new SameIdException(userId, friendId);
+        }
+
+        userStorage.addFriend(userId, friendId);
+        return mapper.toResponse(userStorage.getById(userId));
+    }
+
+    public UserResponse deleteFriend(Long userId, Long friendId) {
+        validateUserExist(userId, friendId);
+
+        if (userStorage.usersAreFriends(userId, friendId)) {
+            if (userId.equals(friendId)) {
+                throw new SameIdException(userId, friendId);
+            }
+
+            userStorage.deleteFriend(userId, friendId);
+        }
+
+        User user = userStorage.getById(userId);
+        return mapper.toResponse(user);
+    }
+
+    public Set<Friend> getFriendsList(Long id) {
+        validateUserExist(id);
+        return userStorage.getUserFriends(id);
+    }
+
+    public Set<Friend> getCommonFriends(Long userId, Long otherId) {
+        validateUserExist(userId, otherId);
+
+        if (userId.equals(otherId)) {
+            throw new SameIdException(userId, otherId);
+        }
+
+        Set<Friend> friends = userStorage.getUserFriends(userId);
+        Set<Friend> otherFriends = userStorage.getUserFriends(otherId);
+
+        return friends.stream()
+                .filter(otherFriends::contains)
+                .collect(Collectors.toSet());
+    }
+
     private void validateEmailIsNotUsed(User user) {
         boolean isUsed = userStorage.getAll()
                 .stream()
@@ -73,52 +131,13 @@ public class UserService {
         }
     }
 
-    public UserResponse getUserById(Long userId) {
-        User user = userStorage.getById(userId);
-        return mapper.toResponse(user);
-    }
-
-    public UserResponse addFriend(Long userId, Long friendId) {
-        if (userId.equals(friendId)) {
-            throw new SameIdException(userId, friendId);
+    private void validateUserExist(Long... id) {
+        for (Long l : id) {
+            try {
+                userStorage.getById(l);
+            } catch (NoSuchElementException e) {
+                throw new UserNotFoundException(l);
+            }
         }
-
-        User user = userStorage.getById(userId);
-        User friend = userStorage.getById(friendId);
-
-        user.getFriends().add(new Friend(friend));
-        friend.getFriends().add(new Friend(user));
-        return mapper.toResponse(user);
-    }
-
-    public UserResponse deleteFriend(Long userId, Long friendId) {
-        if (userId.equals(friendId)) {
-            throw new SameIdException(userId, friendId);
-        }
-
-        User user = userStorage.getById(userId);
-        User friend = userStorage.getById(friendId);
-        user.getFriends().removeIf(fr -> fr.getId().equals(friendId));
-        friend.getFriends().removeIf(fr -> fr.getId().equals(userId));
-
-        return mapper.toResponse(user);
-    }
-
-    public Set<Friend> getFriendsList(Long id) {
-        User user = userStorage.getById(id);
-        return user.getFriends();
-    }
-
-    public Set<Friend> getCommonFriends(Long userId, Long otherId) {
-        if (userId.equals(otherId)) {
-            throw new SameIdException(userId, otherId);
-        }
-
-        User user = userStorage.getById(userId);
-        User other = userStorage.getById(otherId);
-
-        return user.getFriends().stream()
-                .filter(other.getFriends()::contains)
-                .collect(Collectors.toSet());
     }
 }

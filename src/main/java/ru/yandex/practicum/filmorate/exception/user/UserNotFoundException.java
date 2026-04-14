@@ -1,6 +1,7 @@
-package ru.yandex.practicum.filmorate.exception;
+package ru.yandex.practicum.filmorate.exception.user;
 
 import org.springframework.http.HttpStatus;
+import ru.yandex.practicum.filmorate.exception.ApiException;
 
 public class UserNotFoundException extends ApiException {
     public UserNotFoundException(long id) {

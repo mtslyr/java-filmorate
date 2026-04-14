@@ -3,15 +3,16 @@ package ru.yandex.practicum.filmorate.model.request;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
-import lombok.Value;
-import ru.yandex.practicum.filmorate.model.enums.FilmGenre;
-import ru.yandex.practicum.filmorate.model.enums.FilmRating;
+import lombok.Data;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
+import java.util.List;
 
-@Value
+@Data
 @AllArgsConstructor
 public class FilmRequest {
     @NotNull(groups = {OnUpdate.class},
@@ -43,11 +44,7 @@ public class FilmRequest {
     @Min(value = 0, groups = {OnCreate.class, OnUpdate.class})
     private Integer duration;
 
-    @NotNull(message = "Жанр фильма должен быть указан",
-            groups = {OnCreate.class})
-    private FilmGenre genre;
+    private List<Genre> genres;
 
-    @NotNull(message = "Рейтинг фильма должен быть указан",
-            groups = {OnCreate.class})
-    private FilmRating rating;
+    private Mpa mpa;
 }
