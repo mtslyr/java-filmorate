@@ -3,58 +3,48 @@
 
 ```text
 users
--
-user_id PK bigint
-email varchar(100) UNIQUE
-login varchar(100)
-name varchar(100)
-birthdate date
-
-# Отношения между пользователями
-users_relations
--
-relation_id PK bigint
-user_id bigint FK >- users.user_id
-related_id bigint FK >- users.user_id
-relation_status_id bigint FK >- users_relations_status.status_id
-
-users_relations_status
--
-status_id PK bigint
-name varchar(20) UNIQUE
-
-films
--
-film_id PK bigint
-name varchar(100)
-description varchar(200)
-release_date date
-duration int
-rate_id bigint FK >- film_rates.rate_id
+---
+user_id BIGINT PK IDENTITY
+email VARCHAR(100) UNIQUE
+login VARCHAR(100)
+name VARCHAR(100) NULL
+birthdate DATE
 
 films_genres
--
-genre_id PK bigint
-name varchar(50) UNIQUE
-description varchar(100) NULL
+---
+genre_id BIGINT PK IDENTITY
+name VARCHAR(50) UNIQUE
+description VARCHAR(100) NULL
 
 film_rates
--
-rate_id PK bigint
-name varchar(10) UNIQUE
-description varchar(100) NULL
+---
+rate_id BIGINT PK IDENTITY
+name VARCHAR(10) UNIQUE
+description VARCHAR(100) NULL
 
-# Связь многие-ко-многим между фильмами и жанрами
+films
+---
+film_id BIGINT PK IDENTITY
+name VARCHAR(100)
+description VARCHAR(200)
+release_date DATE
+duration INT
+rate_id BIGINT FK >- film_rates.rate_id default='unknown'
+
 film_genre_relations
--
-film_id bigint FK >- films.film_id
-genre_id bigint FK >- films_genres.genre_id
+---
+film_id BIGINT PK FK >- films.film_id
+genre_id BIGINT PK FK >- films_genres.genre_id
+
+friends
+---
+user_id BIGINT PK FK >- users.user_id
+friend_id BIGINT PK FK >- users.user_id
+relation_status VARCHAR(20)
 
 film_likes
--
-like_id PK bigint
-user_id bigint FK >- users.user_id
-film_id bigint FK >- films.film_id
-mark int
-like_date datetime
+---
+user_id BIGINT PK FK >- users.user_id
+film_id BIGINT PK FK >- films.film_id
+like_date DATETIME
 ```

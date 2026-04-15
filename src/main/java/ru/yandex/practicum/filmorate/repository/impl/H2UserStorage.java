@@ -1,82 +1,63 @@
 package ru.yandex.practicum.filmorate.repository.impl;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.context.annotation.Primary;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.ApiException;
-import ru.yandex.practicum.filmorate.exception.InternalServerException;
+import ru.yandex.practicum.filmorate.exception.user.InvalidEmailException;
 import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.model.enums.UserRelationsStatus;
-import ru.yandex.practicum.filmorate.model.response.Friend;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
+import ru.yandex.practicum.filmorate.repository.entity.UserEntity;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
+@Primary
 @Repository("H2UserStorage")
-@Slf4j
-public class H2UserStorage extends BaseStorage<User> implements UserStorage  {
+public class H2UserStorage extends BaseStorage<UserEntity> implements UserStorage {
 
     public static final String FIND_ALL_QUERY = "SELECT * FROM users";
-    public static final String FIND_BY_ID_QUERY = "SELECT * FROM users WHERE user_id = ?";
 
-    public static final String FIND_USER_FRIENDS = "SELECT * FROM users WHERE user_id IN (" +
-            "SELECT ur.related_id FROM users AS u" +
-            " JOIN users_relations AS ur " +
-                "ON u.user_id=ur.user_id" +
-            " WHERE u.user_id = ? AND ur.relation_status_id = ?)";
-    public static final String INSERT_QUERY = "INSERT INTO users(email, login, name, birthdate) " +
-            "VALUES (?, ?, ?, ?)";
+    public static final String INSERT_QUERY = """
+            INSERT INTO users(email, login, name, birthdate) VALUES (?, ?, ?, ?)
+            """;
 
-    public static final String UPDATE_QUERY = "UPDATE users " +
-            "SET email = ?, name = ?, birthdate = ? " +
-            "WHERE user_id = ?";
+    public static final String FIND_BY_ID = "SELECT * FROM users WHERE user_id = ?";
 
-    public static final String ADD_FRIEND = "INSERT INTO" +
-            " users_relations(user_id, related_id, relation_status_id) " +
-            "VALUES (?, ?, ?)";
-
-    public static final String DELETE_FRIEND = "UPDATE users_relations " +
-            "SET relation_status_id = ? " +
-            "WHERE user_id = ? AND related_id = ?";
-
-    public static final String FIND_STATUS_ID = "SELECT status_id" +
-            " FROM users_relations_status" +
-            " WHERE name = ?";
-
-    public static final String FIND_FRIEND_STATUS_FOR_USER = "SELECT COUNT(*) FROM users_relations" +
-            " WHERE user_id = ? AND related_id = ? AND relation_status_id = ?";
-
-    public H2UserStorage(JdbcTemplate jdbc, RowMapper<User> mapper) {
+    public H2UserStorage(JdbcTemplate jdbc, RowMapper<UserEntity> mapper) {
         super(jdbc, mapper);
     }
 
     @Override
     public Collection<User> getAll() {
-        return findMany(FIND_ALL_QUERY);
+        return findMany(FIND_ALL_QUERY)
+                .stream()
+                .map(UserEntity::toUser)
+                .toList();
     }
 
     @Override
     public User save(User user) {
-        long id = insert(
-                INSERT_QUERY,
-                user.getEmail(),
-                user.getLogin(),
-                user.getName(),
-                user.getBirthday()
-        );
+        try {
+            long id = insert(INSERT_QUERY,
+                    user.getEmail(),
+                    user.getLogin(),
+                    user.getName(),
+                    user.getBirthday());
 
-        user.setId(id);
-        return user;
+
+            user.setId(id);
+            return user;
+        } catch (DuplicateKeyException e) {
+            throw new InvalidEmailException(user.getEmail());
+        }
     }
 
     @Override
     public User update(User user) throws ApiException {
         User origin = getById(user.getId());
-
         List<Object> params = new ArrayList<>();
         List<String> setClauses = new ArrayList<>();
 
@@ -105,78 +86,49 @@ public class H2UserStorage extends BaseStorage<User> implements UserStorage  {
         String updateQuery = "UPDATE users SET " + String.join(", ", setClauses) + " WHERE user_id = ?";
         params.add(user.getId());
 
-        update(updateQuery, params.toArray());
+        try {
+            update(updateQuery, params.toArray());
+        } catch (DuplicateKeyException e) {
+            throw new InvalidEmailException(user.getEmail());
+        }
 
         return getById(user.getId());
     }
 
-
     @Override
     public User getById(long id) {
-        Optional<User> userOpt = findOne(FIND_BY_ID_QUERY, id);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException(id);
+        Optional<UserEntity> userOpt = findOne(FIND_BY_ID, id);
+
+        return userOpt
+                .orElseThrow(() -> new UserNotFoundException(id))
+                .toUser();
+    }
+
+    public void validateExist(Long... id) {
+        StringBuilder query = new StringBuilder("SELECT * FROM users WHERE user_id IN (");
+
+        Iterator<Long> iterator = Arrays.stream(id).iterator();
+
+        while (iterator.hasNext()) {
+            query.append(iterator.next().toString());
+            if (iterator.hasNext()) {
+                query.append(", ");
+            } else {
+                query.append(")");
+            }
         }
 
-        User user = userOpt.get();
-        user.setFriends(getUserFriends(user.getId()));
-        return user;
-    }
+        List<Long> users = findMany(query.toString())
+                .stream()
+                .map(UserEntity::getId)
+                .toList();
 
-    @Override
-    public Set<Friend> getUserFriends(long id) {
-        List<User> friends = findMany(
-                FIND_USER_FRIENDS,
-                id,
-                getUserRelationsStatusId(UserRelationsStatus.FRIEND));
+        List<Long> ids = Arrays.asList(id);
 
-        log.info("Найдены друзья пользователя {}: {}", id, Arrays.toString(friends.toArray()));
-
-        return friends.stream()
-                .map(User::toFriend)
-                .collect(Collectors.toSet());
-    }
-
-    @Override
-    public void addFriend(long userId, long idToAdd) {
-        long friendStatusId = getUserRelationsStatusId(UserRelationsStatus.FRIEND);
-        insert(
-                ADD_FRIEND,
-                userId,
-                idToAdd,
-                friendStatusId
-        );
-    }
-
-    @Override
-    public void deleteFriend(long userId, long idToDelete) {
-        update(
-                DELETE_FRIEND,
-                getUserRelationsStatusId(UserRelationsStatus.REMOVED),
-                userId,
-                idToDelete
-        );
-    }
-
-    @Override
-    public boolean usersAreFriends(Long userId, Long friendId) {
-        Integer count = jdbc.queryForObject(FIND_FRIEND_STATUS_FOR_USER,
-                Integer.class,
-                userId,
-                friendId,
-                getUserRelationsStatusId(UserRelationsStatus.FRIEND));
-
-        return count > 0;
-    }
-
-
-    public Long getUserRelationsStatusId(UserRelationsStatus status) {
-        try {
-            return jdbc.queryForObject(FIND_STATUS_ID, Long.class, status.name());
-        } catch (EmptyResultDataAccessException e) {
-            throw new InternalServerException(
-                    "Не удалось получить id для статуса %s".formatted(status.name())
-            );
+        for (Long i : ids) {
+            if (!users.contains(i)) {
+                throw new UserNotFoundException(i);
+            }
         }
     }
 }
