@@ -1,10 +1,11 @@
 package ru.yandex.practicum.filmorate.model.response;
 
 
-import ru.yandex.practicum.filmorate.model.enums.FilmGenre;
-import ru.yandex.practicum.filmorate.model.enums.FilmRating;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 public record FilmResponse(
@@ -14,7 +15,7 @@ public record FilmResponse(
         LocalDate releaseDate,
         Integer duration,
         Set<Long> likes,
-        FilmGenre genre,
-        FilmRating rating
+        List<Genre> genres,
+        Mpa mpa
 ) {
 }

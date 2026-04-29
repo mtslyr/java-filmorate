@@ -13,4 +13,6 @@ public interface UserStorage {
     User update(User user) throws ApiException;
 
     User getById(long id);
+
+    void validateExist(Long... id);
 }
