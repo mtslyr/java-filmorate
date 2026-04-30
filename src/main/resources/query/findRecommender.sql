@@ -13,11 +13,10 @@ WITH user_favourite_films
 		)
 )
 
-SELECT USER_ID,
-		COUNT(*) AS likes_matches
+SELECT USER_ID AS user_id
 FROM FILM_LIKES fl
 WHERE fl.FILM_ID IN (SELECT FILM_ID FROM user_favourite_films)
 	AND fl.USER_ID IN (SELECT USER_ID FROM users_with_other_films)
 GROUP BY fl.USER_ID
-ORDER BY LIKES_MATCHES DESC
+ORDER BY COUNT(*) DESC
 LIMIT 1;

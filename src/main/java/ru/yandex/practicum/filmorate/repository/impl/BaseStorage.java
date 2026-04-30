@@ -19,7 +19,7 @@ import java.util.Optional;
 
 @RequiredArgsConstructor
 public class BaseStorage<T> {
-    protected static final String RESOURCES = System.getProperty("user.dir") + "src/main/resources/";
+    protected static final String RESOURCES = System.getProperty("user.dir") + "/src/main/resources/";
     protected final JdbcTemplate jdbc;
     protected final RowMapper<T> mapper;
 
