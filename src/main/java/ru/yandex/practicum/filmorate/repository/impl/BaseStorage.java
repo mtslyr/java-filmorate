@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import ru.yandex.practicum.filmorate.exception.InternalServerException;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -71,7 +70,7 @@ public class BaseStorage<T> {
     }
 
     protected String getQueryFromSource(Path filePath) {
-        try(InputStream input = Files.newInputStream(filePath)) {
+        try (InputStream input = Files.newInputStream(filePath)) {
             return new String(input.readAllBytes());
         } catch (IOException e) {
             throw new RuntimeException("Ошибка при чтении файла %s".formatted(filePath.toFile().getAbsolutePath()));
