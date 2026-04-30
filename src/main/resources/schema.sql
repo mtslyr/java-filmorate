@@ -49,3 +49,12 @@ CREATE TABLE IF NOT EXISTS film_likes (
     like_date DATETIME NOT NULL,
     PRIMARY KEY (user_id, film_id)
 );
+
+CREATE TABLE IF NOT EXISTS feed_events (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    timestamp BIGINT NOT NULL,
+    user_id INT NOT NULL,
+    event_type VARCHAR(20) NOT NULL,
+    operation VARCHAR(20) NOT NULL,
+    entity_id INT NOT NULL
+    );
