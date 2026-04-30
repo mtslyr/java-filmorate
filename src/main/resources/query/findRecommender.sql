@@ -1,0 +1,23 @@
+WITH user_favourite_films
+	AS (SELECT FILM_ID
+		FROM FILM_LIKES fl
+		WHERE USER_ID = ?),
+	users_with_other_films
+	AS (SELECT DISTINCT USER_ID
+		FROM FILM_LIKES fl
+		WHERE USER_ID != ?
+		AND EXISTS (SELECT 1
+					FROM FILM_LIKES fl2
+					WHERE fl2.USER_ID = fl.USER_ID
+					AND fl2.FILM_ID NOT IN (SELECT FILM_ID FROM user_favourite_films)
+		)
+)
+
+SELECT USER_ID,
+		COUNT(*) AS likes_matches
+FROM FILM_LIKES fl
+WHERE fl.FILM_ID IN (SELECT FILM_ID FROM user_favourite_films)
+	AND fl.USER_ID IN (SELECT USER_ID FROM users_with_other_films)
+GROUP BY fl.USER_ID
+ORDER BY LIKES_MATCHES DESC
+LIMIT 1;

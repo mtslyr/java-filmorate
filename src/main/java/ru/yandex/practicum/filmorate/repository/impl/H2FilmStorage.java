@@ -13,6 +13,7 @@ import ru.yandex.practicum.filmorate.repository.MpaStorage;
 import ru.yandex.practicum.filmorate.repository.entity.FilmEntity;
 import ru.yandex.practicum.filmorate.repository.entity.FilmGenreRelationEntity;
 
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +38,13 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
      ON f.rate_id = fr.rate_id
      WHERE f.film_id = ?
     """;
+
+    public static final String FIND_FAVORITE_FILMS = """
+            SELECT f.*
+            FROM film_likes fl
+            JOIN films f ON f.FILM_ID = fl.FILM_ID\s
+            WHERE fl.USER_ID = ?
+            """;
 
     public H2FilmStorage(
             JdbcTemplate jdbc,
@@ -157,6 +165,14 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
     }
 
     @Override
+    public Collection<Film> getFavouriteFilms(long userId) {
+        return findMany(FIND_FAVORITE_FILMS, userId)
+                .stream()
+                .map(FilmEntity::toFilm)
+                .collect(Collectors.toSet());
+    }
+
+    @Override
     public void likeFilm(long userId, long filmId) {
         String query = "MERGE INTO film_likes KEY(user_id, film_id) VALUES (?, ?, ?)";
 
@@ -183,6 +199,15 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
                 filmId);
 
         return new HashSet<>(likes);
+    }
+
+    @Override
+    public Long getRecommenderId(long userId) {
+        String query = getQueryFromSource(Paths.get(
+                RESOURCES + "query/findRecommender.sql"
+        ));
+
+        return jdbc.queryForObject(query, Long.class, userId, userId);
     }
 
     private String getInsertGenresQuery(Film film) {
