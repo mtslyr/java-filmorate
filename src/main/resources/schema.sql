@@ -59,9 +59,9 @@ CREATE TABLE IF NOT EXISTS feed_events (
     entity_id BIGINT NOT NULL
     );
 
-CREATE TABLE IF NOT EXISTS review_reactions (
-    review_id BIGINT NOT NULL REFERENCES reviews(review_id) ON DELETE CASCADE,
-    user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS review_likes (
+    review_id BIGINT REFERENCES reviews(review_id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
     is_like BOOLEAN NOT NULL,
     PRIMARY KEY (review_id, user_id)
     );
