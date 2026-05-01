@@ -6,13 +6,12 @@ import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.FeedEvent;
 import ru.yandex.practicum.filmorate.model.OperationType;
-import ru.yandex.practicum.filmorate.repository.FeedStorage;
 
 import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
-public class FeedStorageImpl implements FeedStorage {
+public class H2FeedStorage implements ru.yandex.practicum.filmorate.repository.FeedStorage {
     private final JdbcTemplate jdbcTemplate;
 
     @Override
