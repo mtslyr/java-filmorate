@@ -4,12 +4,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.controller.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.controller.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.model.request.UserRequest;
+import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 import ru.yandex.practicum.filmorate.model.response.UserResponse;
 import ru.yandex.practicum.filmorate.repository.FriendsStorage;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
+import ru.yandex.practicum.filmorate.service.RecommendationService;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -21,15 +24,19 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserStorage userStorage;
     private final FriendsStorage friendsStorage;
+    private final RecommendationService recommendation;
     private final UserMapper mapper;
+    private final FilmMapper filmMapper;
 
     public UserService(
             @Qualifier("H2UserStorage") UserStorage userStorage,
-            FriendsStorage friendsStorage,
-            UserMapper mapper) {
+            FriendsStorage friendsStorage, RecommendationService recommendation,
+            UserMapper mapper, FilmMapper filmMapper) {
         this.userStorage = userStorage;
         this.friendsStorage = friendsStorage;
+        this.recommendation = recommendation;
         this.mapper = mapper;
+        this.filmMapper = filmMapper;
     }
 
     public Collection<UserResponse> getAllUsers() {
@@ -98,6 +105,13 @@ public class UserService {
         return CollectionUtils.intersection(userFriends, otherFriends)
                 .stream()
                 .map(mapper::toResponse)
+                .collect(Collectors.toSet());
+    }
+
+    public Set<FilmResponse> getRecommendations(Long userId) {
+        return recommendation.getRecommendations(userId)
+                .stream()
+                .map(filmMapper::toResponse)
                 .collect(Collectors.toSet());
     }
 }
