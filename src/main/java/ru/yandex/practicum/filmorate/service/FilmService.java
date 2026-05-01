@@ -11,7 +11,6 @@ import ru.yandex.practicum.filmorate.repository.FilmStorage;
 import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.FeedEvent;
 import ru.yandex.practicum.filmorate.model.OperationType;
-import ru.yandex.practicum.filmorate.service.FeedService;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -27,9 +26,10 @@ public class FilmService {
 
     public FilmService(
             @Qualifier("H2FilmStorage") FilmStorage filmStorage,
-            FilmMapper mapper) {
+            FilmMapper mapper, FeedService feedService) {
         this.filmStorage = filmStorage;
         this.mapper = mapper;
+        this.feedService = feedService;
     }
 
     public Collection<FilmResponse> getAllFilms() {

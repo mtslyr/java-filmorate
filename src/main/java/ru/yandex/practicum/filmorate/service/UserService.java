@@ -13,7 +13,6 @@ import ru.yandex.practicum.filmorate.repository.UserStorage;
 import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.FeedEvent;
 import ru.yandex.practicum.filmorate.model.OperationType;
-import ru.yandex.practicum.filmorate.service.FeedService;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -22,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+
 public class UserService {
     private final UserStorage userStorage;
     private final FriendsStorage friendsStorage;
@@ -31,10 +31,11 @@ public class UserService {
     public UserService(
             @Qualifier("H2UserStorage") UserStorage userStorage,
             FriendsStorage friendsStorage,
-            UserMapper mapper) {
+            UserMapper mapper, FeedService feedService) {
         this.userStorage = userStorage;
         this.friendsStorage = friendsStorage;
         this.mapper = mapper;
+        this.feedService = feedService;
     }
 
     public Collection<UserResponse> getAllUsers() {
