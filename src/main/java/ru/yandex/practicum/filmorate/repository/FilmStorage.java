@@ -15,6 +15,12 @@ public interface FilmStorage {
 
     Film getById(long id);
 
+    Collection<Film> getFavouriteFilms(long userId);
+
+    /** Возвращает id пользователя, по которому делается рекомендация
+     */
+    Long getRecommenderId(long userId);
+
     void likeFilm(long userId, long filmId);
 
     void dislikeFilm(long userId, long filmId);
