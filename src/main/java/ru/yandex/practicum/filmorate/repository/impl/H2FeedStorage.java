@@ -6,12 +6,13 @@ import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.FeedEvent;
 import ru.yandex.practicum.filmorate.model.OperationType;
+import ru.yandex.practicum.filmorate.repository.FeedStorage;
 
 import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
-public class H2FeedStorage implements ru.yandex.practicum.filmorate.repository.FeedStorage {
+public class H2FeedStorage implements FeedStorage {
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -31,11 +32,11 @@ public class H2FeedStorage implements ru.yandex.practicum.filmorate.repository.F
     @Override
     public List<FeedEvent> getFeedByUserId(Long userId) {
         String sql = """
-                SELECT event_id, timestamp, user_id, event_type, operation, entity_id
-                FROM feed_events
-                WHERE user_id = ?
-                ORDER BY timestamp DESC, event_id DESC
-                """;
+            SELECT event_id, timestamp, user_id, event_type, operation, entity_id
+            FROM feed_events
+            WHERE user_id = ?
+            ORDER BY event_id ASC
+            """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> new FeedEvent(
                 rs.getLong("event_id"),
