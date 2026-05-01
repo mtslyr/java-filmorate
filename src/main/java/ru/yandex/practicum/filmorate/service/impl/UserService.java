@@ -10,6 +10,10 @@ import ru.yandex.practicum.filmorate.model.request.UserRequest;
 import ru.yandex.practicum.filmorate.model.response.UserResponse;
 import ru.yandex.practicum.filmorate.repository.FriendsStorage;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
+import ru.yandex.practicum.filmorate.model.EventType;
+import ru.yandex.practicum.filmorate.model.FeedEvent;
+import ru.yandex.practicum.filmorate.model.OperationType;
+import ru.yandex.practicum.filmorate.service.FeedService;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -22,6 +26,7 @@ public class UserService {
     private final UserStorage userStorage;
     private final FriendsStorage friendsStorage;
     private final UserMapper mapper;
+    private final FeedService feedService;
 
     public UserService(
             @Qualifier("H2UserStorage") UserStorage userStorage,
@@ -68,12 +73,31 @@ public class UserService {
     public UserResponse addFriend(Long userId, Long friendId) {
         if (!Objects.equals(userId, friendId)) {
             friendsStorage.addFriend(userId, friendId);
+
+            feedService.addEvent(new FeedEvent(
+                    null,
+                    System.currentTimeMillis(),
+                    userId,
+                    EventType.FRIEND,
+                    OperationType.ADD,
+                    friendId
+            ));
         }
         return mapper.toResponse(userStorage.getById(userId));
     }
 
     public UserResponse deleteFriend(Long userId, Long friendId) {
         friendsStorage.deleteFriend(userId, friendId);
+
+        feedService.addEvent(new FeedEvent(
+                null,
+                System.currentTimeMillis(),
+                userId,
+                EventType.FRIEND,
+                OperationType.REMOVE,
+                friendId
+        ));
+
         return mapper.toResponse(userStorage.getById(userId));
     }
 
