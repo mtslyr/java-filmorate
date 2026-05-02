@@ -114,4 +114,8 @@ public class UserService {
                 .map(filmMapper::toResponse)
                 .collect(Collectors.toSet());
     }
+
+    public boolean deleteUser(Long userId) {
+        return userStorage.delete(userId);
+    }
 }

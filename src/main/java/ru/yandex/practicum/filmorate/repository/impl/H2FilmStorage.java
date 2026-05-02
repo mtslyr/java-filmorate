@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.ApiException;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
 import ru.yandex.practicum.filmorate.model.Director;
+import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.repository.DirectorStorage;
@@ -32,7 +33,10 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
      JOIN film_rates AS fr
      ON f.rate_id = fr.rate_id
     """;
+
     public static final String FIND_GENRES_FOR_ALL_FILMS = "SELECT * FROM film_genre_relations";
+
+    public static final String DELETE_FILM_BY_ID = "DELETE FROM films WHERE film_id = ?";
 
     public static final String FIND_FILM_BY_ID = """
     SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
@@ -146,6 +150,19 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         }
 
         return film;
+    }
+
+    @Override
+    public boolean delete(Long filmId) throws FilmNotFoundException {
+        if (filmId == null) {
+            throw new IllegalArgumentException("filmId cannot be null");
+        }
+
+        boolean deleted = delete(DELETE_FILM_BY_ID, filmId);
+        if (!deleted) {
+            throw new FilmNotFoundException(filmId);
+        }
+        return true;
     }
 
     private void saveFilmGenres(Film film) {
