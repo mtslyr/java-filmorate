@@ -8,10 +8,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FeedEvent {
+
     private Long eventId;
+
     private Long timestamp;
+
     private Long userId;
+
     private EventType eventType;
+
     private OperationType operation;
+
     private Long entityId;
+
 }
