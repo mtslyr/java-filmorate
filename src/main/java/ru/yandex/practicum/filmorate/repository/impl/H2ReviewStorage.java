@@ -26,7 +26,7 @@ public class H2ReviewStorage extends BaseStorage<ReviewEntity> implements Review
     private static final String FIND_BY_FILM_ID_QUERY = "SELECT * FROM reviews WHERE film_id = ? ORDER BY useful DESC LIMIT ?";
     private static final String FIND_ALL_ORDER_BY_USEFUL = "SELECT * FROM reviews ORDER BY useful DESC LIMIT ?";
     private static final String INSERT_QUERY = """
-            INSERT INTO reviews(content, is_positive, user_id, film_id, useful, created_at) 
+            INSERT INTO reviews(content, is_positive, user_id, film_id, useful, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
             """;
     private static final String UPDATE_QUERY = """

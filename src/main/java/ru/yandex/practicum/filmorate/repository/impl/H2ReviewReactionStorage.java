@@ -14,7 +14,7 @@ import java.util.Optional;
 public class H2ReviewReactionStorage extends BaseStorage<ReviewReactionEntity> implements ReviewReactionStorage {
 
     private static final String INSERT_QUERY = """
-            INSERT INTO review_reactions(review_id, user_id, is_like, created_at) 
+            INSERT INTO review_reactions(review_id, user_id, is_like, created_at)
             VALUES (?, ?, ?, ?)
             """;
     private static final String DELETE_QUERY = "DELETE FROM review_reactions WHERE review_id = ? AND user_id = ?";
