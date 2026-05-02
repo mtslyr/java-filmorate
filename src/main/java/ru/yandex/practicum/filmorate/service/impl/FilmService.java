@@ -77,7 +77,7 @@ public class FilmService {
                 null,
                 System.currentTimeMillis(),
                 userId,
-                EventType.FRIEND,
+                EventType.LIKE,
                 OperationType.ADD,
                 filmId
         ));
@@ -92,8 +92,8 @@ public class FilmService {
                 null,
                 System.currentTimeMillis(),
                 userId,
-                EventType.FRIEND,
-                OperationType.ADD,
+                EventType.LIKE,
+                OperationType.REMOVE,
                 filmId
         ));
 

@@ -30,9 +30,9 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public Review update(Review review) {
-        Review updated = reviewStorage.update(review);
-        feedStorage.addEvent(updated.getUserId(), updated.getReviewId(), "REVIEW", "UPDATE");
-        return updated;
+        Review updatedReview = reviewStorage.update(review);
+        feedStorage.addEvent(updatedReview.getUserId(), updatedReview.getReviewId(), "REVIEW", "UPDATE");
+        return updatedReview;
     }
 
     @Override
