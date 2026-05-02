@@ -49,15 +49,7 @@ public class H2FeedStorage implements FeedStorage {
     }
 
     @Override
-    public void addEvent(Long userId, Long entityId, String eventType, String operation) {
-        FeedEvent event = new FeedEvent(
-                null,
-                System.currentTimeMillis(),
-                userId,
-                EventType.valueOf(eventType),
-                OperationType.valueOf(operation),
-                entityId
-        );
-        addEvent(event);
+    public void addEvent(Long userId, Long reviewId, String review, String update) {
+
     }
 }
