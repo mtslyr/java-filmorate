@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.model.Review;
+import ru.yandex.practicum.filmorate.repository.FeedStorage;
 import ru.yandex.practicum.filmorate.repository.FilmStorage;
 import ru.yandex.practicum.filmorate.repository.ReviewStorage;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
@@ -12,22 +13,26 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class ReviewServiceimpl implements ReviewService {
+public class ReviewServiceImpl implements ReviewService {
     private final ReviewStorage reviewStorage;
     private final UserStorage userStorage;
     private final FilmStorage filmStorage;
+    private final FeedStorage feedStorage;
 
     @Override
     public Review create(Review review) {
         userStorage.getById(review.getUserId());
         filmStorage.getById(review.getFilmId());
-        return reviewStorage.create(review);
+        Review created = reviewStorage.create(review);
+        feedStorage.addEvent(created.getUserId(), created.getReviewId(), "REVIEW", "ADD");
+        return created;
     }
 
     @Override
     public Review update(Review review) {
-        reviewStorage.getById(review.getReviewId());
-        return reviewStorage.update(review);
+        Review updated = reviewStorage.update(review);
+        feedStorage.addEvent(updated.getUserId(), updated.getReviewId(), "REVIEW", "UPDATE");
+        return updated;
     }
 
     @Override
@@ -42,7 +47,9 @@ public class ReviewServiceimpl implements ReviewService {
 
     @Override
     public void delete(Long id) {
+        Review review = getById(id);
         reviewStorage.delete(id);
+        feedStorage.addEvent(review.getUserId(), id, "REVIEW", "REMOVE");
     }
 
     @Override

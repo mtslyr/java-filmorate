@@ -47,4 +47,9 @@ public class H2FeedStorage implements FeedStorage {
                 rs.getLong("entity_id")
         ), userId);
     }
+
+    @Override
+    public void addEvent(Long userId, Long reviewId, String review, String update) {
+
+    }
 }
