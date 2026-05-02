@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ public class Review {
     private String content;
 
     @NotNull(message = "Тип отзыва (положительный/отрицательный) должен быть указан")
+    @JsonProperty("isPositive")
     private Boolean isPositive;
 
     @NotNull(message = "ID пользователя обязателен")

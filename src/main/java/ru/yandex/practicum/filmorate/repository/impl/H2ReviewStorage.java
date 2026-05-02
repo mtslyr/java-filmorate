@@ -77,22 +77,38 @@ public class H2ReviewStorage implements ReviewStorage {
 
     @Override
     public void addLike(Long reviewId, Long userId) {
-        changeUseful(reviewId, userId, true, 1);
+        String sqlLike = "MERGE INTO review_likes (review_id, user_id, is_like) KEY(review_id, user_id) VALUES (?, ?, true)";
+        jdbcTemplate.update(sqlLike, reviewId, userId);
+        updateUseful(reviewId);
     }
 
     @Override
     public void addDislike(Long reviewId, Long userId) {
-        changeUseful(reviewId, userId, false, -1);
+        String sqlLike = "MERGE INTO review_likes (review_id, user_id, is_like) KEY(review_id, user_id) VALUES (?, ?, false)";
+        jdbcTemplate.update(sqlLike, reviewId, userId);
+        updateUseful(reviewId);
     }
 
     @Override
     public void removeLike(Long reviewId, Long userId) {
-        removeReaction(reviewId, userId, 1);
+        String sql = "DELETE FROM review_likes WHERE review_id = ? AND user_id = ? AND is_like = true";
+        jdbcTemplate.update(sql, reviewId, userId);
+        updateUseful(reviewId);
     }
 
     @Override
     public void removeDislike(Long reviewId, Long userId) {
-        removeReaction(reviewId, userId, -1);
+        String sql = "DELETE FROM review_likes WHERE review_id = ? AND user_id = ? AND is_like = false";
+        jdbcTemplate.update(sql, reviewId, userId);
+        updateUseful(reviewId);
+    }
+
+    private void updateUseful(Long reviewId) {
+        String sql = "UPDATE reviews SET useful = (" +
+                "SELECT (SELECT COUNT(*) FROM review_likes WHERE review_id = ? AND is_like = true) - " +
+                "(SELECT COUNT(*) FROM review_likes WHERE review_id = ? AND is_like = false)) " +
+                "WHERE review_id = ?";
+        jdbcTemplate.update(sql, reviewId, reviewId, reviewId);
     }
 
     private void changeUseful(Long reviewId, Long userId, boolean isLike, int delta) {
@@ -116,7 +132,7 @@ public class H2ReviewStorage implements ReviewStorage {
                 .content(rs.getString("content"))
                 .isPositive(rs.getBoolean("is_positive"))
                 .userId(rs.getLong("user_id"))
-                .filmId(rs.getLong("film_id")) // Убедитесь, что в БД film_id или приведите к filmId
+                .filmId(rs.getLong("film_id"))
                 .useful(rs.getInt("useful"))
                 .build();
     }
