@@ -35,7 +35,7 @@ public class H2FeedStorage implements FeedStorage {
             SELECT event_id, timestamp, user_id, event_type, operation, entity_id
             FROM feed_events
             WHERE user_id = ?
-            ORDER BY timestamp DESC, event_id DESC
+            ORDER BY event_id ASC
             """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> new FeedEvent(
