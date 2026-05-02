@@ -47,7 +47,7 @@ public class ReviewService {
     public ReviewResponse createReview(ReviewRequest request) {
         log.info("Создание отзыва: filmId={}, userId={}", request.getFilmId(), request.getUserId());
 
-        // Проверяем существование пользователя
+        // Проверить существование пользователя (getById сам выбросит исключение, если не найден или id <= 0)
         try {
             userStorage.getById(request.getUserId());
         } catch (UserNotFoundException e) {
@@ -59,7 +59,7 @@ public class ReviewService {
             );
         }
 
-        // Проверяем существование фильма
+        // Проверить существование фильма
         try {
             filmStorage.getById(request.getFilmId());
         } catch (FilmNotFoundException e) {

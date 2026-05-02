@@ -23,13 +23,9 @@ public class ReviewRequest {
 
     @NotNull(message = "ID пользователя должен быть указан",
             groups = OnCreate.class)
-    @Positive(message = "ID пользователя должен быть положительным",
-            groups = OnCreate.class)
     private Long userId;
 
     @NotNull(message = "ID фильма должен быть указан",
-            groups = OnCreate.class)
-    @Positive(message = "ID фильма должен быть положительным",
             groups = OnCreate.class)
     private Long filmId;
 }
