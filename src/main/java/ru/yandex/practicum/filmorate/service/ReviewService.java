@@ -2,12 +2,8 @@ package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.mapper.ReviewMapper;
-import ru.yandex.practicum.filmorate.exception.ApiException;
-import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
-import ru.yandex.practicum.filmorate.exception.user.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.Review;
 import ru.yandex.practicum.filmorate.model.ReviewReaction;
 import ru.yandex.practicum.filmorate.model.request.ReviewRequest;
@@ -47,29 +43,8 @@ public class ReviewService {
     public ReviewResponse createReview(ReviewRequest request) {
         log.info("Создание отзыва: filmId={}, userId={}", request.getFilmId(), request.getUserId());
 
-        // Проверить существование пользователя (getById сам выбросит исключение, если не найден или id <= 0)
-        try {
-            userStorage.getById(request.getUserId());
-        } catch (UserNotFoundException e) {
-            throw new ApiException(
-                    "Пользователь не найден",
-                    "userId",
-                    String.valueOf(request.getUserId()),
-                    HttpStatus.NOT_FOUND
-            );
-        }
-
-        // Проверить существование фильма
-        try {
-            filmStorage.getById(request.getFilmId());
-        } catch (FilmNotFoundException e) {
-            throw new ApiException(
-                    "Фильм не найден",
-                    "filmId",
-                    String.valueOf(request.getFilmId()),
-                    HttpStatus.NOT_FOUND
-            );
-        }
+        userStorage.getById(request.getUserId());
+        filmStorage.getById(request.getFilmId());
 
         Review review = mapper.toReview(request);
         validate(review);
