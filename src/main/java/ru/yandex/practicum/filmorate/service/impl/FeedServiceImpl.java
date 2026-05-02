@@ -11,7 +11,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class FeedServiceimpl implements FeedService {
+public class FeedServiceImpl implements FeedService {
     private final FeedStorage feedStorage;
     private final UserStorage userStorage;
 
