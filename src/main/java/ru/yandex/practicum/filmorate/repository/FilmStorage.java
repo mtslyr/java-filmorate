@@ -12,7 +12,6 @@ public interface FilmStorage {
 
     Film update(Film film) throws ApiException;
 
-
     Film getById(long id);
 
     Collection<Film> getFavouriteFilms(long userId);
@@ -24,4 +23,6 @@ public interface FilmStorage {
     void likeFilm(long userId, long filmId);
 
     void dislikeFilm(long userId, long filmId);
+
+    Collection<Film> getFilmsByDirector(Long directorId, String sortBy);
 }

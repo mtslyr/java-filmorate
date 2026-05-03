@@ -3,12 +3,14 @@ package ru.yandex.practicum.filmorate.repository.entity;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Mpa;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -20,6 +22,7 @@ public class FilmEntity {
      Integer duration;
      Long rateId;
      Mpa mpa;
+     Set<Director> directors;
 
      public Film toFilm() {
           return new Film(
@@ -30,7 +33,8 @@ public class FilmEntity {
                   this.duration,
                   new HashSet<>(),
                   new ArrayList<>(),
-                  this.mpa
+                  this.mpa,
+                  new HashSet<>()
           );
      }
 }

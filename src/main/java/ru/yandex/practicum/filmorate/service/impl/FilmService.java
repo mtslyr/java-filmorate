@@ -54,6 +54,13 @@ public class FilmService {
         return mapper.toResponse(created);
     }
 
+    public Collection<FilmResponse> getFilmsByDirector(Long directorId, String sortBy) {
+        return filmStorage.getFilmsByDirector(directorId, sortBy)
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
+
     public FilmResponse updateFilm(FilmRequest request) {
         if (request.getReleaseDate() != null) {
             validateFilmReleaseDate(request);

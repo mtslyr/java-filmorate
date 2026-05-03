@@ -21,4 +21,5 @@ public class Film {
     private Set<Long> likes;
     private List<Genre> genres;
     private Mpa mpa;
+    private Set<Director> directors;
 }
