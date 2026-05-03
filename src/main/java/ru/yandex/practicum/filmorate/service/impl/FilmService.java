@@ -11,7 +11,6 @@ import ru.yandex.practicum.filmorate.repository.FilmStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,13 +34,20 @@ public class FilmService {
                 .collect(Collectors.toList());
     }
 
-    public Collection<FilmResponse> getPopularFilms(Integer count) {
+    public Collection<FilmResponse> getPopularFilms(Integer count, Long genreId, Integer year) {
         return filmStorage.getAll()
                 .stream()
-                .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
+                .filter(film -> genreId == null || film.getGenres() != null && film.getGenres().stream()
+                        .anyMatch(genre -> genre.getId().equals(genreId)))
+                .filter(film -> year == null || film.getReleaseDate() != null && film.getReleaseDate().getYear() == year)
+                .sorted((f1, f2) -> {
+                    int size1 = f1.getLikes() != null ? f1.getLikes().size() : 0;
+                    int size2 = f2.getLikes() != null ? f2.getLikes().size() : 0;
+                    return Integer.compare(size2, size1);
+                })
                 .limit(count)
                 .map(mapper::toResponse)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     public FilmResponse getById(Long id) {
