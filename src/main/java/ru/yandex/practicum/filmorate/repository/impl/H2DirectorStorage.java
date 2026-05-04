@@ -5,7 +5,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.ApiException;
-import ru.yandex.practicum.filmorate.exception.director.DirectorAlreadyExistsException;
 import ru.yandex.practicum.filmorate.exception.director.DirectorNotFoundException;
 import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.repository.DirectorStorage;
@@ -49,7 +48,9 @@ public class H2DirectorStorage extends BaseStorage<DirectorEntity> implements Di
             director.setId(id);
             return director;
         } catch (DuplicateKeyException e) {
-            throw new DirectorAlreadyExistsException(director.getName());
+            return findOne("SELECT * FROM directors WHERE name = ?", director.getName())
+                    .orElseThrow()
+                    .toDirector();
         }
     }
 
@@ -75,7 +76,7 @@ public class H2DirectorStorage extends BaseStorage<DirectorEntity> implements Di
         try {
             update(updateQuery, params.toArray());
         } catch (DuplicateKeyException e) {
-            throw new DirectorAlreadyExistsException(director.getName());
+            return getById(director.getId());
         }
 
         return getById(director.getId());
