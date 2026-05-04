@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service.impl;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.mapper.FilmMapper;
@@ -14,9 +15,9 @@ import ru.yandex.practicum.filmorate.model.OperationType;
 import ru.yandex.practicum.filmorate.service.FeedService;
 
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.Comparator;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Service
 public class FilmService {
@@ -41,12 +42,12 @@ public class FilmService {
     }
 
     public Collection<FilmResponse> getPopularFilms(Integer count) {
-        return filmStorage.getAll()
+        return sortByPopular(filmStorage.getAll())
                 .stream()
-                .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
                 .limit(count)
                 .map(mapper::toResponse)
                 .toList();
+
     }
 
     public FilmResponse getById(Long id) {
@@ -63,7 +64,6 @@ public class FilmService {
         if (request.getReleaseDate() != null) {
             validateFilmReleaseDate(request);
         }
-
 
         Film updated = filmStorage.update(mapper.toFilm(request));
 
@@ -104,5 +104,22 @@ public class FilmService {
         if (request.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             throw new InvalidReleaseDateException(request.getReleaseDate());
         }
+    }
+
+    public Collection<FilmResponse> getCommonFilms(Long userId, Long friendId) {
+        Collection<Film> userFilms = filmStorage.getFavouriteFilms(userId);
+        Collection<Film> friendFilms = filmStorage.getFavouriteFilms(friendId);
+        Collection<Film> commonFilms = CollectionUtils.intersection(userFilms, friendFilms);
+
+        return sortByPopular(commonFilms)
+                .stream().map(mapper::toResponse)
+                .toList();
+    }
+
+    private Collection<Film> sortByPopular(Iterable<Film> films) {
+        Spliterator<Film> spliterator = films.spliterator();
+        return StreamSupport.stream(spliterator, false)
+                .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
+                .toList();
     }
 }

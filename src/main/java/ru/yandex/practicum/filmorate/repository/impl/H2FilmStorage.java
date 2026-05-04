@@ -166,10 +166,14 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
 
     @Override
     public Collection<Film> getFavouriteFilms(long userId) {
-        return findMany(FIND_FAVORITE_FILMS, userId)
+        List<Film> favouriteFilms =  findMany(FIND_FAVORITE_FILMS, userId)
                 .stream()
                 .map(FilmEntity::toFilm)
-                .collect(Collectors.toSet());
+                .toList();
+
+        setFilmLikes(favouriteFilms);
+        setFilmGenres(favouriteFilms);
+        return favouriteFilms;
     }
 
     @Override
@@ -185,7 +189,7 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         delete(query, userId, filmId);
     }
 
-    public void setFilmLikes(List<Film> films) {
+    public void setFilmLikes(Iterable<Film> films) {
         for (Film film : films) {
             film.setLikes(findFilmLikes(film.getId()));
         }
