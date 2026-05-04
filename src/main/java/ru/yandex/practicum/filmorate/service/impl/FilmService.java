@@ -9,6 +9,10 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.request.FilmRequest;
 import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 import ru.yandex.practicum.filmorate.repository.FilmStorage;
+import ru.yandex.practicum.filmorate.model.EventType;
+import ru.yandex.practicum.filmorate.model.FeedEvent;
+import ru.yandex.practicum.filmorate.model.OperationType;
+import ru.yandex.practicum.filmorate.service.FeedService;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -20,12 +24,14 @@ public class FilmService {
 
     private final FilmStorage filmStorage;
     private final FilmMapper mapper;
+    private final FeedService feedService;
 
     public FilmService(
             @Qualifier("H2FilmStorage") FilmStorage filmStorage,
-            FilmMapper mapper) {
+            FilmMapper mapper, FeedService feedService) {
         this.filmStorage = filmStorage;
         this.mapper = mapper;
+        this.feedService = feedService;
     }
 
     public Collection<FilmResponse> getAllFilms() {
@@ -66,11 +72,31 @@ public class FilmService {
 
     public FilmResponse likeFilm(Long filmId, Long userId) {
         filmStorage.likeFilm(userId, filmId);
+
+        feedService.addEvent(new FeedEvent(
+                null,
+                System.currentTimeMillis(),
+                userId,
+                EventType.LIKE,
+                OperationType.ADD,
+                filmId
+        ));
+
         return mapper.toResponse(filmStorage.getById(filmId));
     }
 
     public FilmResponse dislikeFilm(Long filmId, Long userId) {
         filmStorage.dislikeFilm(userId, filmId);
+
+        feedService.addEvent(new FeedEvent(
+                null,
+                System.currentTimeMillis(),
+                userId,
+                EventType.LIKE,
+                OperationType.REMOVE,
+                filmId
+        ));
+
         return mapper.toResponse(filmStorage.getById(filmId));
     }
 
