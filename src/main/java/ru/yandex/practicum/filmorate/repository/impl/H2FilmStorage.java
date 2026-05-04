@@ -247,6 +247,7 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         String query = "DELETE FROM film_likes WHERE user_id = ? AND film_id = ?";
         delete(query, userId, filmId);
     }
+
     public void setFilmLikes(Iterable<Film> films) {
         for (Film film : films) {
             film.setLikes(findFilmLikes(film.getId()));
