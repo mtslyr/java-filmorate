@@ -48,6 +48,7 @@ public class FilmController {
         return filmService.getById(id);
     }
 
+
     @PostMapping
     public FilmResponse createFilm(@RequestBody @Validated(OnCreate.class) FilmRequest request) {
         log.info("Создание фильма: {}", request);
