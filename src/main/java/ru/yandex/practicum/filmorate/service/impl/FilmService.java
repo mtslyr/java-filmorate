@@ -28,20 +28,19 @@ public class FilmService {
         this.mapper = mapper;
     }
 
-    public Collection<FilmResponse> getAllFilms() {
+    public List<FilmResponse> getAllFilms() {
         return filmStorage.getAll()
                 .stream()
                 .map(mapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    public Collection<FilmResponse> getPopularFilms(Integer count) {
-        return sortByPopular(filmStorage.getAll())
+    public Collection<FilmResponse> getPopularFilms(Integer count, Long genreId, Integer year) {
+        return sortByPopular(filmStorage.getAll(genreId, year))
                 .stream()
                 .limit(count)
                 .map(mapper::toResponse)
                 .toList();
-
     }
 
     public FilmResponse getById(Long id) {
