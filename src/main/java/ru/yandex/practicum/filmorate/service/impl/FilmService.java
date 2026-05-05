@@ -13,6 +13,7 @@ import ru.yandex.practicum.filmorate.repository.FilmStorage;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Spliterator;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -30,20 +31,19 @@ public class FilmService {
         this.mapper = mapper;
     }
 
-    public Collection<FilmResponse> getAllFilms() {
+    public List<FilmResponse> getAllFilms() {
         return filmStorage.getAll()
                 .stream()
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
 
-    public Collection<FilmResponse> getPopularFilms(Integer count) {
-        return sortByPopular(filmStorage.getAll())
+    public Collection<FilmResponse> getPopularFilms(Integer count, Long genreId, Integer year) {
+        return sortByPopular(filmStorage.getAll(genreId, year))
                 .stream()
                 .limit(count)
                 .map(mapper::toResponse)
                 .toList();
-
     }
 
     public FilmResponse getById(Long id) {
