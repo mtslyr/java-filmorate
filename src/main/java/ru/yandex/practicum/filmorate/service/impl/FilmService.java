@@ -60,6 +60,13 @@ public class FilmService {
         return mapper.toResponse(created);
     }
 
+    public Collection<FilmResponse> getFilmsByDirector(Long directorId, String sortBy) {
+        return filmStorage.getFilmsByDirector(directorId, sortBy)
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
+
     public FilmResponse updateFilm(FilmRequest request) {
         if (request.getReleaseDate() != null) {
             validateFilmReleaseDate(request);
@@ -106,6 +113,10 @@ public class FilmService {
         }
     }
 
+    public boolean deleteFilm(Long filmId) {
+        return filmStorage.delete(filmId);
+    }
+
     public Collection<FilmResponse> getCommonFilms(Long userId, Long friendId) {
         Collection<Film> userFilms = filmStorage.getFavouriteFilms(userId);
         Collection<Film> friendFilms = filmStorage.getFavouriteFilms(friendId);
@@ -120,6 +131,13 @@ public class FilmService {
         Spliterator<Film> spliterator = films.spliterator();
         return StreamSupport.stream(spliterator, false)
                 .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
+                .toList();
+    }
+
+     public Collection<FilmResponse> search(String query, String by) {
+        return filmStorage.search(query, by)
+                .stream()
+                .map(mapper::toResponse)
                 .toList();
     }
 }
