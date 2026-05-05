@@ -28,4 +28,6 @@ public interface FilmStorage {
     Collection<Film> getFilmsByDirector(Long directorId, String sortBy);
 
     boolean delete(Long filmId) throws FilmNotFoundException;
+
+    Collection<Film> search(String query, String by);
 }

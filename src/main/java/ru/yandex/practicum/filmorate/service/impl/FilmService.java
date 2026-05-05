@@ -107,4 +107,11 @@ public class FilmService {
                 .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
                 .toList();
     }
+
+     public Collection<FilmResponse> search(String query, String by) {
+        return filmStorage.search(query, by)
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
 }

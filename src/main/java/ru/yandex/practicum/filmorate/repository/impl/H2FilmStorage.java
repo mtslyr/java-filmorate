@@ -80,6 +80,64 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         ORDER BY COUNT(fl.user_id) DESC
         """;
 
+    public static final String FIND_FILM_BY_TITLE = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        LEFT JOIN film_likes AS fl ON f.film_id = fl.film_id
+        WHERE LOWER(f.name) LIKE LOWER(?)
+        GROUP BY
+            f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            f.rate_id,
+            fr.rate_id,
+            fr.name
+        ORDER BY COUNT(fl.user_id) DESC
+        """;
+
+    public static final String FIND_FILM_BY_DIRECTOR = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        JOIN film_directors AS fd ON f.film_id = fd.film_id
+        JOIN directors AS d ON fd.director_id = d.director_id
+        LEFT JOIN film_likes AS fl ON f.film_id = fl.film_id
+        WHERE LOWER(d.name) LIKE LOWER(?)
+        GROUP BY
+            f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            f.rate_id,
+            fr.rate_id,
+            fr.name
+        ORDER BY COUNT(fl.user_id) DESC
+        """;
+
+    public static final String FIND_FILM_BY_DIRECTOR_OR_TITLE = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        LEFT JOIN film_directors AS fd ON f.film_id = fd.film_id
+        LEFT JOIN directors AS d ON fd.director_id = d.director_id
+        LEFT JOIN film_likes AS fl ON f.film_id = fl.film_id
+        WHERE LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?)
+        GROUP BY
+            f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            f.rate_id,
+            fr.rate_id,
+            fr.name
+        ORDER BY COUNT(DISTINCT fl.user_id) DESC
+        """;
+
     public H2FilmStorage(
             JdbcTemplate jdbc,
             RowMapper<FilmEntity> mapper,
@@ -162,6 +220,36 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
             throw new FilmNotFoundException(filmId);
         }
         return true;
+    }
+
+    @Override
+    public Collection<Film> search(String query, String by) {
+        List<Film> films;
+
+        if ("title".equals(by)) {
+            films = findMany(FIND_FILM_BY_TITLE, "%" + query + "%")
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else if ("director".equals(by)) {
+            films =  findMany(FIND_FILM_BY_DIRECTOR, "%" + query + "%")
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else if ("director,title".equals(by) || "title,director".equals(by)) {
+            films =  findMany(FIND_FILM_BY_DIRECTOR_OR_TITLE, "%" + query + "%", "%" + query + "%")
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else {
+            throw new IllegalArgumentException("Неподдерживаемый параметр by: " + by);
+        }
+
+        setFilmGenres(films);
+        setFilmLikes(films);
+        setFilmDirectors(films);
+
+        return films;
     }
 
     private void saveFilmGenres(Film film) {
