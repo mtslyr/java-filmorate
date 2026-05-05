@@ -3,7 +3,6 @@ package ru.yandex.practicum.filmorate.controller.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
-import ru.yandex.practicum.filmorate.model.Review;
 import ru.yandex.practicum.filmorate.model.request.ReviewRequest;
 import ru.yandex.practicum.filmorate.model.response.ReviewResponse;
 
