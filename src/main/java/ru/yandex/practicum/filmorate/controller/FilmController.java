@@ -27,11 +27,9 @@ public class FilmController {
 
     @GetMapping("/popular")
     public Collection<FilmResponse> getPopularFilms(
-            @RequestParam(name = "count", defaultValue = "10") Integer count,
-            @RequestParam(name = "genreId", required = false) Long genreId,
-            @RequestParam(name = "year", required = false) Integer year) {
-        log.info("Получить {} популярных фильмов (genreId: {}, year: {})", count, genreId, year);
-        return filmService.getPopularFilms(count, genreId, year);
+            @RequestParam(name = "count", required = false, defaultValue = "10") Integer count) {
+        log.info("Получить {} популярных фильмов", count);
+        return filmService.getPopularFilms(count);
     }
 
     @GetMapping("/director/{directorId}")
@@ -56,7 +54,6 @@ public class FilmController {
         log.info("Получить фильм по ID: {}", id);
         return filmService.getById(id);
     }
-
 
     @PostMapping
     public FilmResponse createFilm(@RequestBody @Validated(OnCreate.class) FilmRequest request) {
