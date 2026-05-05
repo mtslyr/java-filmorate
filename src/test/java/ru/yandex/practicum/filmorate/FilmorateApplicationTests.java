@@ -23,6 +23,7 @@ import ru.yandex.practicum.filmorate.model.response.UserResponse;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,7 +45,8 @@ class FilmorateApplicationTests {
 				LocalDate.now().minusYears(10),
 				123,
 				List.of(new Genre(1L, "Комедия")),
-				new Mpa(1L, "G"));
+				new Mpa(1L, "G"),
+                Set.of());
 
 	}
 
@@ -174,7 +176,8 @@ class FilmorateApplicationTests {
 					createdFilm.releaseDate(),
 					120,
 					createdFilm.genres(),
-					createdFilm.mpa());
+					createdFilm.mpa(),
+                    Set.of());
 
 			mockMvc.perform(put("/films")
 							.contentType(MediaType.APPLICATION_JSON)
@@ -258,7 +261,8 @@ class FilmorateApplicationTests {
 					null,
 					null,
 					null,
-					null);
+					null,
+                    null);
 
 			mockMvc.perform(put("/films")
 							.contentType(MediaType.APPLICATION_JSON)

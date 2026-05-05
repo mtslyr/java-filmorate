@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service.impl;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.mapper.FilmMapper;
@@ -12,13 +13,13 @@ import ru.yandex.practicum.filmorate.repository.FilmStorage;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Service
 public class FilmService {
 
     private final FilmStorage filmStorage;
     private final FilmMapper mapper;
-
 
     public FilmService(
             @Qualifier("H2FilmStorage") FilmStorage filmStorage,
@@ -34,20 +35,13 @@ public class FilmService {
                 .collect(Collectors.toList());
     }
 
-    public Collection<FilmResponse> getPopularFilms(Integer count, Long genreId, Integer year) {
-        return filmStorage.getAll()
+    public Collection<FilmResponse> getPopularFilms(Integer count) {
+        return sortByPopular(filmStorage.getAll())
                 .stream()
-                .filter(film -> genreId == null || film.getGenres() != null && film.getGenres().stream()
-                        .anyMatch(genre -> genre.getId().equals(genreId)))
-                .filter(film -> year == null || film.getReleaseDate() != null && film.getReleaseDate().getYear() == year)
-                .sorted((f1, f2) -> {
-                    int size1 = f1.getLikes() != null ? f1.getLikes().size() : 0;
-                    int size2 = f2.getLikes() != null ? f2.getLikes().size() : 0;
-                    return Integer.compare(size2, size1);
-                })
                 .limit(count)
                 .map(mapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
+
     }
 
     public FilmResponse getById(Long id) {
@@ -60,11 +54,17 @@ public class FilmService {
         return mapper.toResponse(created);
     }
 
+    public Collection<FilmResponse> getFilmsByDirector(Long directorId, String sortBy) {
+        return filmStorage.getFilmsByDirector(directorId, sortBy)
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
+
     public FilmResponse updateFilm(FilmRequest request) {
         if (request.getReleaseDate() != null) {
             validateFilmReleaseDate(request);
         }
-
 
         Film updated = filmStorage.update(mapper.toFilm(request));
 
@@ -85,5 +85,33 @@ public class FilmService {
         if (request.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             throw new InvalidReleaseDateException(request.getReleaseDate());
         }
+    }
+
+    public boolean deleteFilm(Long filmId) {
+        return filmStorage.delete(filmId);
+    }
+
+    public Collection<FilmResponse> getCommonFilms(Long userId, Long friendId) {
+        Collection<Film> userFilms = filmStorage.getFavouriteFilms(userId);
+        Collection<Film> friendFilms = filmStorage.getFavouriteFilms(friendId);
+        Collection<Film> commonFilms = CollectionUtils.intersection(userFilms, friendFilms);
+
+        return sortByPopular(commonFilms)
+                .stream().map(mapper::toResponse)
+                .toList();
+    }
+
+    private Collection<Film> sortByPopular(Iterable<Film> films) {
+        Spliterator<Film> spliterator = films.spliterator();
+        return StreamSupport.stream(spliterator, false)
+                .sorted(Comparator.comparingInt((Film f)  -> f.getLikes().size()).reversed())
+                .toList();
+    }
+
+     public Collection<FilmResponse> search(String query, String by) {
+        return filmStorage.search(query, by)
+                .stream()
+                .map(mapper::toResponse)
+                .toList();
     }
 }
