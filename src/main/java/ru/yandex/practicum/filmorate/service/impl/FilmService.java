@@ -12,7 +12,6 @@ import ru.yandex.practicum.filmorate.repository.FilmStorage;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @Service
