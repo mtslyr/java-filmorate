@@ -40,6 +40,15 @@ public class FilmController {
         return filmService.getFilmsByDirector(directorId, sortBy);
     }
 
+    @GetMapping("/search")
+    public Collection<FilmResponse> search(
+            @RequestParam String query,
+            @RequestParam String by
+    ) {
+        log.info("Поиск фильмов по query='{}', by='{}'", query, by);
+        return filmService.search(query, by);
+    }
+
     @GetMapping("/{id}")
     public FilmResponse getFilmById(@PathVariable("id") Long id) {
         log.info("Получить фильм по ID: {}", id);
