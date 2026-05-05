@@ -80,4 +80,10 @@ public class UserController {
         log.info("Получение рекомендаций для пользователя {}", userId);
         return userService.getRecommendations(userId);
     }
+
+    @DeleteMapping("/{id}")
+    public void deleteUser(@PathVariable("id") Long userId) {
+        log.info("Удалить пользователя по ID: {}", userId);
+        userService.deleteUser(userId);
+    }
 }

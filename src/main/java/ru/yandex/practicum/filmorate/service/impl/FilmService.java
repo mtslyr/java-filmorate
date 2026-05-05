@@ -87,6 +87,10 @@ public class FilmService {
         }
     }
 
+    public boolean deleteFilm(Long filmId) {
+        return filmStorage.delete(filmId);
+    }
+
     public Collection<FilmResponse> getCommonFilms(Long userId, Long friendId) {
         Collection<Film> userFilms = filmStorage.getFavouriteFilms(userId);
         Collection<Film> friendFilms = filmStorage.getFavouriteFilms(friendId);

@@ -74,6 +74,12 @@ public class FilmController {
         return filmService.dislikeFilm(filmId, userId);
     }
 
+    @DeleteMapping("/{id}")
+    public void deleteFilm(@PathVariable("id") Long filmId) {
+        log.info("Удалить фильм по ID: {}", filmId);
+        filmService.deleteFilm(filmId);
+    }
+
     @GetMapping("/common")
     public Collection<FilmResponse> getCommonFilms(
             @RequestParam(name = "userId") Long userId,
