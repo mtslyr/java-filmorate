@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.model.response;
 
 
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 
@@ -16,6 +17,7 @@ public record FilmResponse(
         Integer duration,
         Set<Long> likes,
         List<Genre> genres,
-        Mpa mpa
+        Mpa mpa,
+        Set<Director> directors
 ) {
 }

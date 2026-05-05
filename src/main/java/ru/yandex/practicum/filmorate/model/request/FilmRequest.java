@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.validation.OnCreate;
@@ -11,6 +12,7 @@ import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -47,4 +49,6 @@ public class FilmRequest {
     private List<Genre> genres;
 
     private Mpa mpa;
+
+    private Set<Director> directors;
 }
