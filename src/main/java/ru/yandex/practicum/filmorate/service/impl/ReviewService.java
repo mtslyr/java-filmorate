@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.service;
+package ru.yandex.practicum.filmorate.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -12,6 +12,7 @@ import ru.yandex.practicum.filmorate.model.request.FeedRequest;
 import ru.yandex.practicum.filmorate.model.request.ReviewRequest;
 import ru.yandex.practicum.filmorate.model.response.ReviewResponse;
 import ru.yandex.practicum.filmorate.repository.*;
+import ru.yandex.practicum.filmorate.service.FeedService;
 
 
 import java.util.List;
@@ -72,6 +73,16 @@ public class ReviewService {
         Review review = mapper.toReview(request);
         review.setId(request.getReviewId());  // исправлено
         Review updated = reviewStorage.update(review);
+
+        FeedRequest event = new FeedRequest(
+                request.getUserId(),
+                EventType.REVIEW,
+                OperationType.UPDATE,
+                request.getFilmId()
+        );
+
+        feedService.addEvent(event);
+
         return mapper.toResponse(updated);
     }
 
@@ -83,8 +94,17 @@ public class ReviewService {
 
     public void deleteReview(Long reviewId) {
         log.info("Удаление отзыва: {}", reviewId);
-        reviewStorage.getById(reviewId);
+        Review review = reviewStorage.getById(reviewId);
         reviewStorage.delete(reviewId);
+
+        FeedRequest event = new FeedRequest(
+                review.getUserId(),
+                EventType.REVIEW,
+                OperationType.REMOVE,
+                review.getFilmId()
+        );
+
+        feedService.addEvent(event);
     }
 
     public List<ReviewResponse> getReviews(Long filmId, Integer count) {

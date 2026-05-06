@@ -11,7 +11,7 @@ public class ReviewRequest {
     @NotNull(groups = OnUpdate.class,
             message = "Id должен быть указан")
     @Positive(groups = OnUpdate.class)
-    private Long reviewId;  // ← здесь id, а не reviewId
+    private Long reviewId;
 
     @NotBlank(message = "Содержание отзыва не должно быть пустым",
             groups = {OnCreate.class, OnUpdate.class})
@@ -23,13 +23,9 @@ public class ReviewRequest {
 
     @NotNull(message = "ID пользователя должен быть указан",
             groups = OnCreate.class)
-    @Positive(message = "ID пользователя должен быть положительным",
-            groups = OnCreate.class)
     private Long userId;
 
     @NotNull(message = "ID фильма должен быть указан",
-            groups = OnCreate.class)
-    @Positive(message = "ID фильма должен быть положительным",
             groups = OnCreate.class)
     private Long filmId;
 }
