@@ -69,13 +69,13 @@ public class ReviewService {
 
     public ReviewResponse updateReview(ReviewRequest request) {
         log.info("Обновление отзыва: reviewId={}", request.getReviewId());  // исправлено
-        reviewStorage.getById(request.getReviewId());  // исправлено
+        Review oldReview = reviewStorage.getById(request.getReviewId());  // исправлено
         Review review = mapper.toReview(request);
         review.setId(request.getReviewId());  // исправлено
         Review updated = reviewStorage.update(review);
 
         FeedRequest event = new FeedRequest(
-                request.getUserId(),
+                oldReview.getUserId(),
                 EventType.REVIEW,
                 OperationType.UPDATE,
                 request.getReviewId()
@@ -151,14 +151,14 @@ public class ReviewService {
             log.info("Лайк добавлен (новый)");
         }
 
-        FeedRequest event = new FeedRequest(
-                userId,
-                EventType.LIKE,
-                OperationType.ADD,
-                reviewId
-        );
-
-        feedService.addEvent(event);
+//        FeedRequest event = new FeedRequest(
+//                userId,
+//                EventType.LIKE,
+//                OperationType.ADD,
+//                reviewId
+//        );
+//
+//        feedService.addEvent(event);
     }
 
     public void addDislike(Long reviewId, Long userId) {
@@ -193,14 +193,14 @@ public class ReviewService {
         }
 
 
-        FeedRequest event = new FeedRequest(
-                userId,
-                EventType.LIKE,
-                OperationType.REMOVE,
-                reviewId
-        );
-
-        feedService.addEvent(event);
+//        FeedRequest event = new FeedRequest(
+//                userId,
+//                EventType.LIKE,
+//                OperationType.REMOVE,
+//                reviewId
+//        );
+//
+//        feedService.addEvent(event);
     }
 
     public void deleteDislike(Long reviewId, Long userId) {

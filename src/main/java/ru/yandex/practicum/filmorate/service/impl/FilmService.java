@@ -21,14 +21,17 @@ import java.util.stream.StreamSupport;
 @Service
 public class FilmService {
 
+    private final UserService userService;
     private final FilmStorage filmStorage;
     private final FeedService feedService;
     private final FilmMapper mapper;
 
     public FilmService(
+            UserService userService,
             @Qualifier("H2FilmStorage") FilmStorage filmStorage,
             FeedService feedService,
             FilmMapper mapper) {
+        this.userService = userService;
         this.filmStorage = filmStorage;
         this.feedService = feedService;
         this.mapper = mapper;
@@ -90,6 +93,8 @@ public class FilmService {
     }
 
     public FilmResponse dislikeFilm(Long filmId, Long userId) {
+        filmStorage.getById(filmId);
+        userService.getUserById(userId);
         filmStorage.dislikeFilm(userId, filmId);
         FeedRequest event = new FeedRequest(
                 System.currentTimeMillis(),
