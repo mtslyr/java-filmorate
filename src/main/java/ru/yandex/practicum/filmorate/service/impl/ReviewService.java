@@ -59,7 +59,7 @@ public class ReviewService {
                 request.getUserId(),
                 EventType.REVIEW,
                 OperationType.ADD,
-                request.getFilmId()
+                saved.getId()
         );
 
         feedService.addEvent(event);
@@ -78,7 +78,7 @@ public class ReviewService {
                 request.getUserId(),
                 EventType.REVIEW,
                 OperationType.UPDATE,
-                request.getFilmId()
+                request.getReviewId()
         );
 
         feedService.addEvent(event);
@@ -101,7 +101,7 @@ public class ReviewService {
                 review.getUserId(),
                 EventType.REVIEW,
                 OperationType.REMOVE,
-                review.getFilmId()
+                reviewId
         );
 
         feedService.addEvent(event);
