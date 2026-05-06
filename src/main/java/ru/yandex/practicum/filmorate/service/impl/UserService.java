@@ -10,6 +10,7 @@ import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.FeedEvent;
 import ru.yandex.practicum.filmorate.model.OperationType;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.request.FeedRequest;
 import ru.yandex.practicum.filmorate.model.request.UserRequest;
 import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 import ru.yandex.practicum.filmorate.model.response.UserResponse;
@@ -82,20 +83,28 @@ public class UserService {
     public UserResponse addFriend(Long userId, Long friendId) {
         if (!Objects.equals(userId, friendId)) {
             friendsStorage.addFriend(userId, friendId);
-            feedService.addEvent(new FeedEvent(
-                    null, System.currentTimeMillis(), userId,
-                    EventType.FRIEND, OperationType.ADD, friendId
-            ));
+            FeedRequest event = new FeedRequest(
+                    System.currentTimeMillis(),
+                    userId,
+                    EventType.FRIEND,
+                    OperationType.ADD,
+                    friendId
+            );
+            feedService.addEvent(event);
         }
         return mapper.toResponse(userStorage.getById(userId));
     }
 
     public UserResponse deleteFriend(Long userId, Long friendId) {
         friendsStorage.deleteFriend(userId, friendId);
-        feedService.addEvent(new FeedEvent(
-                null, System.currentTimeMillis(), userId,
-                EventType.FRIEND, OperationType.REMOVE, friendId
-        ));
+        FeedRequest event = new FeedRequest(
+                System.currentTimeMillis(),
+                userId,
+                EventType.FRIEND,
+                OperationType.REMOVE,
+                friendId
+        );
+        feedService.addEvent(event);
         return mapper.toResponse(userStorage.getById(userId));
     }
 

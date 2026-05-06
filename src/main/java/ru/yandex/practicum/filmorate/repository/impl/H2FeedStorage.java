@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.FeedEvent;
 import ru.yandex.practicum.filmorate.model.OperationType;
+import ru.yandex.practicum.filmorate.model.request.FeedRequest;
 import ru.yandex.practicum.filmorate.repository.FeedStorage;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public class H2FeedStorage implements FeedStorage {
     private final JdbcTemplate jdbcTemplate;
 
     @Override
-    public void addEvent(FeedEvent event) {
+    public void addEvent(FeedRequest event) {
         String sql = """
                 INSERT INTO feed_events (timestamp, user_id, event_type, operation, entity_id)
                 VALUES (?, ?, ?, ?, ?)
@@ -48,16 +49,5 @@ public class H2FeedStorage implements FeedStorage {
         ), userId);
     }
 
-    @Override
-    public void addEvent(Long userId, Long entityId, String eventType, String operation) {
-        FeedEvent event = new FeedEvent(
-                null,
-                System.currentTimeMillis(),
-                userId,
-                EventType.valueOf(eventType),
-                OperationType.valueOf(operation),
-                entityId
-        );
-        addEvent(event);
-    }
+
 }
