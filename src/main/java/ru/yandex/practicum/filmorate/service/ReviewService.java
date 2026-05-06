@@ -4,14 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.mapper.ReviewMapper;
+import ru.yandex.practicum.filmorate.model.EventType;
+import ru.yandex.practicum.filmorate.model.OperationType;
 import ru.yandex.practicum.filmorate.model.Review;
 import ru.yandex.practicum.filmorate.model.ReviewReaction;
+import ru.yandex.practicum.filmorate.model.request.FeedRequest;
 import ru.yandex.practicum.filmorate.model.request.ReviewRequest;
 import ru.yandex.practicum.filmorate.model.response.ReviewResponse;
-import ru.yandex.practicum.filmorate.repository.FilmStorage;
-import ru.yandex.practicum.filmorate.repository.ReviewReactionStorage;
-import ru.yandex.practicum.filmorate.repository.ReviewStorage;
-import ru.yandex.practicum.filmorate.repository.UserStorage;
+import ru.yandex.practicum.filmorate.repository.*;
 
 
 import java.util.List;
@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class ReviewService {
+    private final FeedService feedService;
     private final ReviewStorage reviewStorage;
     private final ReviewReactionStorage reactionStorage;
     private final ReviewMapper mapper;
@@ -27,11 +28,13 @@ public class ReviewService {
     private final FilmStorage filmStorage;
 
     public ReviewService(
+            FeedService feedService,
             @Qualifier("H2ReviewStorage") ReviewStorage reviewStorage,
             ReviewReactionStorage reactionStorage,
             ReviewMapper mapper,
             @Qualifier("H2UserStorage") UserStorage userStorage,
             @Qualifier("H2FilmStorage") FilmStorage filmStorage) {
+        this.feedService = feedService;
         this.reviewStorage = reviewStorage;
         this.reactionStorage = reactionStorage;
         this.mapper = mapper;
@@ -50,6 +53,16 @@ public class ReviewService {
         validate(review);
         review.setUseful(0);
         Review saved = reviewStorage.save(review);
+
+        FeedRequest event = new FeedRequest(
+                request.getUserId(),
+                EventType.REVIEW,
+                OperationType.ADD,
+                request.getFilmId()
+        );
+
+        feedService.addEvent(event);
+
         return mapper.toResponse(saved);
     }
 
@@ -117,6 +130,15 @@ public class ReviewService {
             reviewStorage.updateUseful(reviewId, 1);
             log.info("Лайк добавлен (новый)");
         }
+
+        FeedRequest event = new FeedRequest(
+                userId,
+                EventType.LIKE,
+                OperationType.ADD,
+                reviewId
+        );
+
+        feedService.addEvent(event);
     }
 
     public void addDislike(Long reviewId, Long userId) {
@@ -149,6 +171,16 @@ public class ReviewService {
             reviewStorage.updateUseful(reviewId, -1);
             log.info("Лайк пользователя {} удален с отзыва {}", userId, reviewId);
         }
+
+
+        FeedRequest event = new FeedRequest(
+                userId,
+                EventType.LIKE,
+                OperationType.REMOVE,
+                reviewId
+        );
+
+        feedService.addEvent(event);
     }
 
     public void deleteDislike(Long reviewId, Long userId) {

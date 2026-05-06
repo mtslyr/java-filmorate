@@ -18,4 +18,12 @@ public class FeedRequest {
     private OperationType operation;
 
     private Long entityId;
+
+    public FeedRequest(Long userId, EventType eventType, OperationType operation, Long entityId) {
+        this.timestamp = System.currentTimeMillis();
+        this.userId = userId;
+        this.eventType = eventType;
+        this.operation = operation;
+        this.entityId = entityId;
+    }
 }
