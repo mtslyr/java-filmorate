@@ -5,6 +5,7 @@ import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface FilmStorage {
     Collection<Film> getAll();
@@ -30,4 +31,7 @@ public interface FilmStorage {
     boolean delete(Long filmId) throws FilmNotFoundException;
 
     Collection<Film> search(String query, String by);
+
+    List<Film> getAll(Long genreId, Integer year);
+
 }

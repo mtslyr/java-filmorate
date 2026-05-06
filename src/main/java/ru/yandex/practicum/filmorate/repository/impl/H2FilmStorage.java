@@ -497,4 +497,34 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
     private void deleteFilmDirectors(Long filmId) {
         jdbc.update("DELETE FROM film_directors WHERE film_id = ?", filmId);
     }
+
+    @Override
+    public List<Film> getAll(Long genreId, Integer year) {
+        List<Film> films;
+
+        if (genreId == null && year == null) {
+            films = new ArrayList<>(getAll());
+        } else if (genreId != null && year == null) {
+            films = findMany(getQueryFromSource(Paths.get(RESOURCES + "query/findPopularFilmsByGenre.sql")), genreId)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else if (genreId == null) {
+            films = findMany(getQueryFromSource(Paths.get(RESOURCES + "query/findPopularFilmsByYear.sql")), year)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else {
+            films = findMany(getQueryFromSource(Paths.get(RESOURCES + "query/findPopularFilmsByGenreAndYear.sql")), genreId, year)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        }
+
+        setFilmGenres(films);
+        setFilmLikes(films);
+        setFilmDirectors(films);
+
+        return films;
+    }
 }
