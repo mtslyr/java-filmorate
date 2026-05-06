@@ -1,11 +1,12 @@
 package ru.yandex.practicum.filmorate.service.impl;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
 import ru.yandex.practicum.filmorate.model.FeedEvent;
+import ru.yandex.practicum.filmorate.model.request.FeedRequest;
+import ru.yandex.practicum.filmorate.service.FeedService;
 import ru.yandex.practicum.filmorate.repository.FeedStorage;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
-import ru.yandex.practicum.filmorate.service.FeedService;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class FeedServiceImpl implements FeedService {
     }
 
     @Override
-    public void addEvent(FeedEvent event) {
+    public void addEvent(FeedRequest event) {
         feedStorage.addEvent(event);
     }
 }

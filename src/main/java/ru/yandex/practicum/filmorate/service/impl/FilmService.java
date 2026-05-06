@@ -5,10 +5,14 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.exception.film.InvalidReleaseDateException;
+import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.OperationType;
+import ru.yandex.practicum.filmorate.model.request.FeedRequest;
 import ru.yandex.practicum.filmorate.model.request.FilmRequest;
 import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 import ru.yandex.practicum.filmorate.repository.FilmStorage;
+import ru.yandex.practicum.filmorate.service.FeedService;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -18,12 +22,15 @@ import java.util.stream.StreamSupport;
 public class FilmService {
 
     private final FilmStorage filmStorage;
+    private final FeedService feedService;
     private final FilmMapper mapper;
 
     public FilmService(
             @Qualifier("H2FilmStorage") FilmStorage filmStorage,
+            FeedService feedService,
             FilmMapper mapper) {
         this.filmStorage = filmStorage;
+        this.feedService = feedService;
         this.mapper = mapper;
     }
 
@@ -71,11 +78,27 @@ public class FilmService {
 
     public FilmResponse likeFilm(Long filmId, Long userId) {
         filmStorage.likeFilm(userId, filmId);
+        FeedRequest event = new FeedRequest(
+                System.currentTimeMillis(),
+                userId,
+                EventType.LIKE,
+                OperationType.ADD,
+                filmId
+        );
+        feedService.addEvent(event);
         return mapper.toResponse(filmStorage.getById(filmId));
     }
 
     public FilmResponse dislikeFilm(Long filmId, Long userId) {
         filmStorage.dislikeFilm(userId, filmId);
+        FeedRequest event = new FeedRequest(
+                System.currentTimeMillis(),
+                userId,
+                EventType.LIKE,
+                OperationType.REMOVE,
+                filmId
+        );
+        feedService.addEvent(event);
         return mapper.toResponse(filmStorage.getById(filmId));
     }
 
