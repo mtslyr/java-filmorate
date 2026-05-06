@@ -46,9 +46,10 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
     """;
 
     public static final String FIND_FAVORITE_FILMS = """
-            SELECT f.*
+            SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
             FROM film_likes fl
             JOIN films f ON f.FILM_ID = fl.FILM_ID\s
+            JOIN film_rates AS fr ON f.rate_id = fr.rate_id
             WHERE fl.USER_ID = ?
             """;
 
@@ -191,7 +192,7 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
 
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             genreStorage.findGenres(film.getGenres().stream().map(Genre::getId).toList());
-            saveFilmGenres(film);
+            genreStorage.saveFilmGenres(film);
         } else {
             film.setGenres(new ArrayList<>());
         }
@@ -252,10 +253,6 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         return films;
     }
 
-    private void saveFilmGenres(Film film) {
-        jdbc.update(getInsertGenresQuery(film));
-    }
-
     @Override
     public Film update(Film film) throws ApiException {
         getById(film.getId());
@@ -289,11 +286,12 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
             String updateQuery = "UPDATE films SET " + String.join(", ", setClauses) + " WHERE film_id = ?";
             params.add(film.getId());
             update(updateQuery, params.toArray());
+            genreStorage.updateFilmGenres(film);
         }
 
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             genreStorage.validateExist(film.getGenres().stream().map(Genre::getId).toList());
-            saveFilmGenres(film);
+            genreStorage.saveFilmGenres(film);
         }
 
         deleteFilmDirectors(film.getId());
@@ -402,22 +400,6 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         ));
 
         return jdbc.queryForObject(query, Long.class, userId, userId);
-    }
-
-    private String getInsertGenresQuery(Film film) {
-        StringBuilder insertGenresQuery = new StringBuilder("MERGE INTO film_genre_relations KEY (film_id, genre_id) VALUES");
-        List<Long> genres = film.getGenres().stream().map(Genre::getId).toList();
-
-        Iterator<Long> iterator = genres.iterator();
-        while (iterator.hasNext()) {
-            insertGenresQuery.append(" (%d, %d)".formatted(film.getId(), iterator.next()));
-
-            if (iterator.hasNext()) {
-                insertGenresQuery.append(",");
-            }
-        }
-
-        return insertGenresQuery.toString();
     }
 
     private void setFilmGenres(List<Film> films) {

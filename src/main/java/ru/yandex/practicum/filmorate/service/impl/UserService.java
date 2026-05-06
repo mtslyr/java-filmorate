@@ -74,7 +74,7 @@ public class UserService {
     }
 
     private void validate(User user) {
-        if (user.getName() == null) {
+        if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
         }
     }
