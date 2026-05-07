@@ -150,15 +150,6 @@ public class ReviewService {
             reviewStorage.updateUseful(reviewId, 1);
             log.info("Лайк добавлен (новый)");
         }
-
-//        FeedRequest event = new FeedRequest(
-//                userId,
-//                EventType.LIKE,
-//                OperationType.ADD,
-//                reviewId
-//        );
-//
-//        feedService.addEvent(event);
     }
 
     public void addDislike(Long reviewId, Long userId) {
@@ -191,16 +182,6 @@ public class ReviewService {
             reviewStorage.updateUseful(reviewId, -1);
             log.info("Лайк пользователя {} удален с отзыва {}", userId, reviewId);
         }
-
-
-//        FeedRequest event = new FeedRequest(
-//                userId,
-//                EventType.LIKE,
-//                OperationType.REMOVE,
-//                reviewId
-//        );
-//
-//        feedService.addEvent(event);
     }
 
     public void deleteDislike(Long reviewId, Long userId) {

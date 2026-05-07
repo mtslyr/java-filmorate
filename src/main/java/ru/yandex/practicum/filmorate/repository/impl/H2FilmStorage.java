@@ -396,10 +396,10 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
     @Override
     public Long getRecommenderId(long userId) {
         String query = getQueryFromSource(Paths.get(
-                RESOURCES + "query/findRecommender.sql"
+                RESOURCES + "query/findRecommenderV2.sql"
         ));
 
-        return jdbc.queryForObject(query, Long.class, userId, userId);
+        return jdbc.queryForObject(query, Long.class, userId);
     }
 
     private void setFilmGenres(List<Film> films) {

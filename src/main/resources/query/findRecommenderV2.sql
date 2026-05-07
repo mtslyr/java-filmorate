@@ -1,0 +1,14 @@
+SELECT
+    others.USER_ID
+FROM FILM_LIKES mine
+    JOIN FILM_LIKES others ON mine.FILM_ID = others.FILM_ID
+WHERE mine.USER_ID = ?
+  AND others.USER_ID != mine.USER_ID
+GROUP BY others.USER_ID
+HAVING COUNT(others.FILM_ID) < (
+    SELECT COUNT(*)
+    FROM FILM_LIKES
+    WHERE USER_ID = others.USER_ID
+)
+ORDER BY COUNT(*) DESC
+LIMIT 1;

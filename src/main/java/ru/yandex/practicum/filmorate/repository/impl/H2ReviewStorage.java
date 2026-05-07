@@ -1,20 +1,20 @@
 package ru.yandex.practicum.filmorate.repository.impl;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.ApiException;
+import ru.yandex.practicum.filmorate.exception.review.ReviewAlreadyExistException;
 import ru.yandex.practicum.filmorate.exception.review.ReviewNotFoundException;
 import ru.yandex.practicum.filmorate.model.Review;
 import ru.yandex.practicum.filmorate.repository.ReviewStorage;
 import ru.yandex.practicum.filmorate.repository.entity.ReviewEntity;
 import ru.yandex.practicum.filmorate.repository.mappers.ReviewRowMapper;
-import org.springframework.http.HttpStatus;
 
 import java.util.List;
-
-import lombok.extern.slf4j.Slf4j;
+import java.util.Optional;
 
 @Slf4j
 @Primary
@@ -23,6 +23,7 @@ public class H2ReviewStorage extends BaseStorage<ReviewEntity> implements Review
 
     private static final String FIND_ALL_QUERY = "SELECT * FROM reviews ORDER BY useful DESC";
     private static final String FIND_BY_ID_QUERY = "SELECT * FROM reviews WHERE id = ?";
+    public static final String FIND_BY_USER_AND_FILM = "SELECT * FROM reviews WHERE user_id = ? AND film_id = ?";
     private static final String FIND_BY_FILM_ID_QUERY = "SELECT * FROM reviews WHERE film_id = ? ORDER BY useful DESC LIMIT ?";
     private static final String FIND_ALL_ORDER_BY_USEFUL = "SELECT * FROM reviews ORDER BY useful DESC LIMIT ?";
     private static final String INSERT_QUERY = """
@@ -51,35 +52,34 @@ public class H2ReviewStorage extends BaseStorage<ReviewEntity> implements Review
 
     @Override
     public Review save(Review review) {
-        if (review.getCreatedAt() == null) {
-            review.setCreatedAt(java.time.LocalDateTime.now());
+        Optional<ReviewEntity> reviewOpt = findOne(
+                FIND_BY_USER_AND_FILM,
+                review.getUserId(),
+                review.getFilmId()
+        );
+
+        if (reviewOpt.isPresent()) {
+            throw new ReviewAlreadyExistException(review.getFilmId());
         }
 
-        if (review.getUseful() == null) {
-            review.setUseful(0);
-        }
+        review.setCreatedAtCurrent();
+        review.setDefaultUseful();
 
-        try {
-            update(INSERT_QUERY,
-                    review.getContent(),
-                    review.getIsPositive(),
-                    review.getUserId(),
-                    review.getFilmId(),
-                    review.getUseful(),
-                    review.getCreatedAt());
+        update(INSERT_QUERY,
+                review.getContent(),
+                review.getIsPositive(),
+                review.getUserId(),
+                review.getFilmId(),
+                review.getUseful(),
+                review.getCreatedAt());
 
-            // Получаем последний ID через MAX
-            Long id = jdbc.queryForObject("SELECT MAX(id) FROM reviews", Long.class);
-            review.setId(id);
-            return review;
-        } catch (DuplicateKeyException e) {
-            throw new ApiException(
-                    "Пользователь уже оставил отзыв на этот фильм",
-                    "userId",
-                    String.valueOf(review.getUserId()),
-                    HttpStatus.CONFLICT
-            );
-        }
+        Long id = jdbc.queryForObject(
+                "SELECT MAX(id) FROM reviews WHERE user_id = ?",
+                Long.class,
+                review.getUserId());
+
+        review.setId(id);
+        return review;
     }
 
     @Override
