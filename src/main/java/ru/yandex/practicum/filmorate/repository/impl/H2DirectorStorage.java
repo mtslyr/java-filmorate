@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.repository.impl;
 
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -18,16 +17,13 @@ public class H2DirectorStorage extends BaseStorage<DirectorEntity> implements Di
 
     public static final String FIND_ALL_QUERY = "SELECT * FROM directors";
 
-    public static final String INSERT_QUERY = """
-            INSERT INTO directors(name) VALUES (?)
-            """;
+    public static final String INSERT_QUERY = "INSERT INTO directors(name) VALUES (?)";
 
     public static final String FIND_BY_ID = "SELECT * FROM directors WHERE director_id = ?";
 
-    public static final String REMOVE_DIRECTOR_QUERY = """
-        DELETE FROM directors
-        WHERE director_id = ?
-        """;
+    public static final String REMOVE_DIRECTOR_QUERY = "DELETE FROM directors WHERE director_id = ?";
+
+    public static final String FIND_BY_NAME = "SELECT * FROM directors WHERE name = ?";
 
     public H2DirectorStorage(JdbcTemplate jdbc, RowMapper<DirectorEntity> mapper) {
         super(jdbc, mapper);
@@ -43,20 +39,27 @@ public class H2DirectorStorage extends BaseStorage<DirectorEntity> implements Di
 
     @Override
     public Director save(Director director) {
-        try {
-            long id = insert(INSERT_QUERY, director.getName());
-            director.setId(id);
-            return director;
-        } catch (DuplicateKeyException e) {
-            return findOne("SELECT * FROM directors WHERE name = ?", director.getName())
-                    .orElseThrow()
-                    .toDirector();
+        Optional<DirectorEntity> existDirector = findOne(FIND_BY_NAME, director.getName());
+
+        if (existDirector.isPresent()) {
+            return existDirector.get().toDirector();
         }
+
+        long id = insert(INSERT_QUERY, director.getName());
+        director.setId(id);
+
+        return director;
     }
 
     @Override
     public Director update(Director director) throws ApiException {
+        Optional<DirectorEntity> existDirector = findOne(FIND_BY_NAME, director.getName());
+
         Director origin = getById(director.getId());
+
+        if (existDirector.isPresent() && !existDirector.get().getId().equals(director.getId())) {
+            return origin;
+        }
 
         List<Object> params = new ArrayList<>();
         List<String> setClauses = new ArrayList<>();
@@ -73,11 +76,7 @@ public class H2DirectorStorage extends BaseStorage<DirectorEntity> implements Di
         String updateQuery = "UPDATE directors SET " + String.join(", ", setClauses) + " WHERE director_id = ?";
         params.add(director.getId());
 
-        try {
-            update(updateQuery, params.toArray());
-        } catch (DuplicateKeyException e) {
-            return getById(director.getId());
-        }
+        update(updateQuery, params.toArray());
 
         return getById(director.getId());
     }
