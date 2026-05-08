@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.film.InvalidGenreException;
+import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.repository.GenreStorage;
 
@@ -78,5 +79,46 @@ public class H2GenreStorage extends BaseStorage<Genre> implements GenreStorage {
                 throw new InvalidGenreException(i);
             }
         }
+    }
+
+    @Override
+    public void updateFilmGenres(Film film) {
+        if (film.getGenres() == null) {
+            return;
+        }
+
+        deleteFilmGenres(film.getId());
+
+        if (!film.getGenres().isEmpty()) {
+            validateExist(film.getGenres().stream().mapToLong(Genre::getId).boxed().toList());
+            saveFilmGenres(film);
+        }
+
+    }
+
+    public void saveFilmGenres(Film film) {
+        jdbc.update(getInsertGenresQuery(film));
+    }
+
+    private String getInsertGenresQuery(Film film) {
+        StringBuilder insertGenresQuery = new StringBuilder("MERGE INTO film_genre_relations KEY (film_id, genre_id) VALUES");
+        List<Long> genres = film.getGenres().stream().map(Genre::getId).toList();
+
+        Iterator<Long> iterator = genres.iterator();
+        while (iterator.hasNext()) {
+            insertGenresQuery.append(" (%d, %d)".formatted(film.getId(), iterator.next()));
+
+            if (iterator.hasNext()) {
+                insertGenresQuery.append(",");
+            }
+        }
+
+        return insertGenresQuery.toString();
+    }
+
+    private void deleteFilmGenres(Long filmId) {
+        jdbc.update(
+                "DELETE FROM film_genre_relations WHERE film_id = " + filmId
+        );
     }
 }

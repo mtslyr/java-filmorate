@@ -1,50 +1,131 @@
 ### Схема базы данных
-#### https://app.quickdatabasediagrams.com/#/
+#### https://dbdiagram.io/
 
 ```text
-users
----
-user_id BIGINT PK IDENTITY
-email VARCHAR(100) UNIQUE
-login VARCHAR(100)
-name VARCHAR(100) NULL
-birthdate DATE
+// Пользователи
+Table users {
+  user_id bigint [primary key, increment]
+  email varchar(100) [unique, not null]
+  login varchar(100) [not null]
+  name varchar(100)
+  birthdate date [not null]
+}
 
-films_genres
----
-genre_id BIGINT PK IDENTITY
-name VARCHAR(50) UNIQUE
-description VARCHAR(100) NULL
+// Фильмы
+Table films {
+  film_id bigint [primary key, increment]
+  name varchar(100) [not null]
+  description varchar(200) [not null]
+  release_date date [not null]
+  duration int [not null]
+  rate_id bigint [not null]
+}
 
-film_rates
----
-rate_id BIGINT PK IDENTITY
-name VARCHAR(10) UNIQUE
-description VARCHAR(100) NULL
+// Рейтинги MPA
+Table film_rates {
+  rate_id bigint [primary key, increment]
+  name varchar(10) [unique, not null]
+  description varchar(100)
+}
 
-films
----
-film_id BIGINT PK IDENTITY
-name VARCHAR(100)
-description VARCHAR(200)
-release_date DATE
-duration INT
-rate_id BIGINT FK >- film_rates.rate_id default='unknown'
+// Жанры
+Table films_genres {
+  genre_id bigint [primary key, increment]
+  name varchar(50) [unique, not null]
+  description varchar(100)
+}
 
-film_genre_relations
----
-film_id BIGINT PK FK >- films.film_id
-genre_id BIGINT PK FK >- films_genres.genre_id
+// Связь фильмов и жанров
+Table film_genre_relations {
+  film_id bigint [not null]
+  genre_id bigint [not null]
+  
+  Indexes {
+    (film_id, genre_id) [pk]
+  }
+}
 
-friends
----
-user_id BIGINT PK FK >- users.user_id
-friend_id BIGINT PK FK >- users.user_id
-relation_status VARCHAR(20)
+// Дружба
+Table friends {
+  user_id bigint [not null]
+  friend_id bigint [not null]
+  relation_status varchar(20) [not null]
 
-film_likes
----
-user_id BIGINT PK FK >- users.user_id
-film_id BIGINT PK FK >- films.film_id
-like_date DATETIME
+  Indexes {
+    (user_id, friend_id) [pk]
+  }
+}
+
+// Лайки фильмов
+Table film_likes {
+  user_id bigint [not null]
+  film_id bigint [not null]
+  like_date datetime [not null]
+
+  Indexes {
+    (user_id, film_id) [pk]
+  }
+}
+
+// Режиссеры
+Table directors {
+  director_id bigint [primary key, increment]
+  name varchar(100) [unique, not null]
+}
+
+// Связь фильмов и режиссеров
+Table film_directors {
+  film_id bigint [not null]
+  director_id bigint [not null]
+
+  Indexes {
+    (film_id, director_id) [pk]
+  }
+}
+
+// Лента событий
+Table feed_events {
+  event_id bigint [primary key, increment]
+  timestamp bigint [not null]
+  user_id bigint [not null]
+  event_type varchar(10) [note: 'LIKE, REVIEW, FRIEND']
+  operation varchar(10) [note: 'REMOVE, ADD, UPDATE']
+  entity_id bigint [not null]
+}
+
+// Отзывы
+Table reviews {
+  id bigint [primary key, increment]
+  content text [not null]
+  is_positive boolean [not null]
+  user_id bigint [not null]
+  film_id bigint [not null]
+  useful int [default: 0]
+  created_at datetime [default: `now()`]
+}
+
+// Реакции на отзывы
+Table review_reactions {
+  id bigint [primary key, increment]
+  review_id bigint [not null]
+  user_id bigint [not null]
+  is_like boolean [not null]
+  created_at datetime [default: `now()`]
+}
+
+// Определение связей (Foreign Keys)
+Ref: films.rate_id > film_rates.rate_id
+Ref: film_genre_relations.film_id > films.film_id [delete: cascade]
+Ref: film_genre_relations.genre_id > films_genres.genre_id
+Ref: friends.user_id > users.user_id [delete: cascade]
+Ref: friends.friend_id > users.user_id [delete: cascade]
+Ref: film_likes.user_id > users.user_id [delete: cascade]
+Ref: film_likes.film_id > films.film_id [delete: cascade]
+Ref: film_directors.film_id > films.film_id [delete: cascade]
+Ref: film_directors.director_id > directors.director_id [delete: cascade]
+Ref: feed_events.user_id > users.user_id [delete: cascade]
+Ref: reviews.user_id > users.user_id [delete: cascade]
+Ref: reviews.film_id > films.film_id [delete: cascade]
+Ref: review_reactions.review_id > reviews.id [delete: cascade]
+Ref: review_reactions.user_id > users.user_id [delete: cascade]
 ```

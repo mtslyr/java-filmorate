@@ -1,15 +1,22 @@
-package ru.yandex.practicum.filmorate.service;
+package ru.yandex.practicum.filmorate.service.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.controller.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.controller.mapper.UserMapper;
+import ru.yandex.practicum.filmorate.model.EventType;
+import ru.yandex.practicum.filmorate.model.OperationType;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.request.FeedRequest;
 import ru.yandex.practicum.filmorate.model.request.UserRequest;
+import ru.yandex.practicum.filmorate.model.response.FilmResponse;
 import ru.yandex.practicum.filmorate.model.response.UserResponse;
 import ru.yandex.practicum.filmorate.repository.FriendsStorage;
 import ru.yandex.practicum.filmorate.repository.UserStorage;
+import ru.yandex.practicum.filmorate.service.FeedService;
+import ru.yandex.practicum.filmorate.service.RecommendationService;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -21,15 +28,22 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserStorage userStorage;
     private final FriendsStorage friendsStorage;
+    private final RecommendationService recommendation;
     private final UserMapper mapper;
+    private final FilmMapper filmMapper;
+    private final FeedService feedService;
 
     public UserService(
             @Qualifier("H2UserStorage") UserStorage userStorage,
-            FriendsStorage friendsStorage,
-            UserMapper mapper) {
+            FriendsStorage friendsStorage, RecommendationService recommendation,
+            UserMapper mapper, FilmMapper filmMapper,
+            FeedService feedService) {
         this.userStorage = userStorage;
         this.friendsStorage = friendsStorage;
+        this.recommendation = recommendation;
         this.mapper = mapper;
+        this.filmMapper = filmMapper;
+        this.feedService = feedService;
     }
 
     public Collection<UserResponse> getAllUsers() {
@@ -60,7 +74,7 @@ public class UserService {
     }
 
     private void validate(User user) {
-        if (user.getName() == null) {
+        if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
         }
     }
@@ -68,12 +82,28 @@ public class UserService {
     public UserResponse addFriend(Long userId, Long friendId) {
         if (!Objects.equals(userId, friendId)) {
             friendsStorage.addFriend(userId, friendId);
+            FeedRequest event = new FeedRequest(
+                    System.currentTimeMillis(),
+                    userId,
+                    EventType.FRIEND,
+                    OperationType.ADD,
+                    friendId
+            );
+            feedService.addEvent(event);
         }
         return mapper.toResponse(userStorage.getById(userId));
     }
 
     public UserResponse deleteFriend(Long userId, Long friendId) {
         friendsStorage.deleteFriend(userId, friendId);
+        FeedRequest event = new FeedRequest(
+                System.currentTimeMillis(),
+                userId,
+                EventType.FRIEND,
+                OperationType.REMOVE,
+                friendId
+        );
+        feedService.addEvent(event);
         return mapper.toResponse(userStorage.getById(userId));
     }
 
@@ -99,5 +129,16 @@ public class UserService {
                 .stream()
                 .map(mapper::toResponse)
                 .collect(Collectors.toSet());
+    }
+
+    public Set<FilmResponse> getRecommendations(Long userId) {
+        return recommendation.getRecommendations(userId)
+                .stream()
+                .map(filmMapper::toResponse)
+                .collect(Collectors.toSet());
+    }
+
+    public boolean deleteUser(Long userId) {
+        return userStorage.delete(userId);
     }
 }

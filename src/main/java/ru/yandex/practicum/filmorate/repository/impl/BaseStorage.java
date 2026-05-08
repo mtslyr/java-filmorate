@@ -7,6 +7,10 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import ru.yandex.practicum.filmorate.exception.InternalServerException;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +18,7 @@ import java.util.Optional;
 
 @RequiredArgsConstructor
 public class BaseStorage<T> {
+    protected static final String RESOURCES = System.getProperty("user.dir") + "/src/main/resources/";
     protected final JdbcTemplate jdbc;
     protected final RowMapper<T> mapper;
 
@@ -61,6 +66,14 @@ public class BaseStorage<T> {
             return id;
         } else {
             throw new InternalServerException("Не удалось сохранить данные");
+        }
+    }
+
+    protected String getQueryFromSource(Path filePath) {
+        try (InputStream input = Files.newInputStream(filePath)) {
+            return new String(input.readAllBytes());
+        } catch (IOException e) {
+            throw new RuntimeException("Ошибка при чтении файла %s".formatted(filePath.toFile().getAbsolutePath()));
         }
     }
 

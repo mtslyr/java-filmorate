@@ -26,6 +26,8 @@ public class H2UserStorage extends BaseStorage<UserEntity> implements UserStorag
 
     public static final String FIND_BY_ID = "SELECT * FROM users WHERE user_id = ?";
 
+    public static final String DELETE_USER_BY_ID = "DELETE FROM users WHERE user_id = ?";
+
     public H2UserStorage(JdbcTemplate jdbc, RowMapper<UserEntity> mapper) {
         super(jdbc, mapper);
     }
@@ -53,6 +55,20 @@ public class H2UserStorage extends BaseStorage<UserEntity> implements UserStorag
         } catch (DuplicateKeyException e) {
             throw new InvalidEmailException(user.getEmail());
         }
+    }
+
+
+    @Override
+    public boolean delete(Long userId) throws UserNotFoundException {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId cannot be null");
+        }
+
+        boolean deleted = delete(DELETE_USER_BY_ID, userId);
+        if (!deleted) {
+            throw new UserNotFoundException(userId);
+        }
+        return true;
     }
 
     @Override

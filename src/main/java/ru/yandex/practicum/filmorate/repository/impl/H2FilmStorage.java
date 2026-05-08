@@ -5,14 +5,17 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.ApiException;
 import ru.yandex.practicum.filmorate.exception.film.FilmNotFoundException;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.repository.DirectorStorage;
 import ru.yandex.practicum.filmorate.repository.FilmStorage;
 import ru.yandex.practicum.filmorate.repository.GenreStorage;
 import ru.yandex.practicum.filmorate.repository.MpaStorage;
 import ru.yandex.practicum.filmorate.repository.entity.FilmEntity;
 import ru.yandex.practicum.filmorate.repository.entity.FilmGenreRelationEntity;
 
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,6 +24,7 @@ import java.util.stream.Collectors;
 public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorage {
     private final GenreStorage genreStorage;
     private final MpaStorage mpaStorage;
+    private final DirectorStorage directorStorage;
 
     public static final String FIND_ALL_QUERY = """
     SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
@@ -28,7 +32,10 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
      JOIN film_rates AS fr
      ON f.rate_id = fr.rate_id
     """;
+
     public static final String FIND_GENRES_FOR_ALL_FILMS = "SELECT * FROM film_genre_relations";
+
+    public static final String DELETE_FILM_BY_ID = "DELETE FROM films WHERE film_id = ?";
 
     public static final String FIND_FILM_BY_ID = """
     SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
@@ -38,13 +45,108 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
      WHERE f.film_id = ?
     """;
 
+    public static final String FIND_FAVORITE_FILMS = """
+            SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+            FROM film_likes fl
+            JOIN films f ON f.FILM_ID = fl.FILM_ID\s
+            JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+            WHERE fl.USER_ID = ?
+            """;
+
+    public static final String FIND_FILMS_BY_DIRECTOR_SORT_BY_YEAR = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        JOIN film_directors AS fd ON f.film_id = fd.film_id
+        WHERE fd.director_id = ?
+        ORDER BY f.release_date
+        """;
+
+    public static final String FIND_FILMS_BY_DIRECTOR_SORT_BY_LIKES = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        JOIN film_directors AS fd ON f.film_id = fd.film_id
+        LEFT JOIN film_likes AS fl ON f.film_id = fl.film_id
+        WHERE fd.director_id = ?
+        GROUP BY
+            f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            f.rate_id,
+            fr.rate_id,
+            fr.name
+        ORDER BY COUNT(fl.user_id) DESC
+        """;
+
+    public static final String FIND_FILM_BY_TITLE = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        LEFT JOIN film_likes AS fl ON f.film_id = fl.film_id
+        WHERE LOWER(f.name) LIKE LOWER(?)
+        GROUP BY
+            f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            f.rate_id,
+            fr.rate_id,
+            fr.name
+        ORDER BY COUNT(fl.user_id) DESC
+        """;
+
+    public static final String FIND_FILM_BY_DIRECTOR = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        JOIN film_directors AS fd ON f.film_id = fd.film_id
+        JOIN directors AS d ON fd.director_id = d.director_id
+        LEFT JOIN film_likes AS fl ON f.film_id = fl.film_id
+        WHERE LOWER(d.name) LIKE LOWER(?)
+        GROUP BY
+            f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            f.rate_id,
+            fr.rate_id,
+            fr.name
+        ORDER BY COUNT(fl.user_id) DESC
+        """;
+
+    public static final String FIND_FILM_BY_DIRECTOR_OR_TITLE = """
+        SELECT f.*, fr.rate_id AS mpa_id, fr.name AS mpa
+        FROM films AS f
+        JOIN film_rates AS fr ON f.rate_id = fr.rate_id
+        LEFT JOIN film_directors AS fd ON f.film_id = fd.film_id
+        LEFT JOIN directors AS d ON fd.director_id = d.director_id
+        LEFT JOIN film_likes AS fl ON f.film_id = fl.film_id
+        WHERE LOWER(f.name) LIKE LOWER(?) OR LOWER(d.name) LIKE LOWER(?)
+        GROUP BY
+            f.film_id,
+            f.name,
+            f.description,
+            f.release_date,
+            f.duration,
+            f.rate_id,
+            fr.rate_id,
+            fr.name
+        ORDER BY COUNT(DISTINCT fl.user_id) DESC
+        """;
+
     public H2FilmStorage(
             JdbcTemplate jdbc,
             RowMapper<FilmEntity> mapper,
-            GenreStorage genreStorage, MpaStorage mpaStorage) {
+            GenreStorage genreStorage, MpaStorage mpaStorage, DirectorStorage directorStorage) {
         super(jdbc, mapper);
         this.genreStorage = genreStorage;
         this.mpaStorage = mpaStorage;
+        this.directorStorage = directorStorage;
     }
 
     @Override
@@ -55,6 +157,7 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
                 .toList();
         setFilmGenres(films);
         setFilmLikes(films);
+        setFilmDirectors(films);
         return films;
     }
 
@@ -89,16 +192,65 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
 
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             genreStorage.findGenres(film.getGenres().stream().map(Genre::getId).toList());
-            saveFilmGenres(film);
+            genreStorage.saveFilmGenres(film);
         } else {
             film.setGenres(new ArrayList<>());
+        }
+
+        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
+            directorStorage.validateExist(film.getDirectors()
+                    .stream()
+                    .map(Director::getId)
+                    .toArray(Long[]::new));
+            saveFilmDirectors(film);
+        } else {
+            film.setDirectors(new HashSet<>());
         }
 
         return film;
     }
 
-    private void saveFilmGenres(Film film) {
-        jdbc.update(getInsertGenresQuery(film));
+    @Override
+    public boolean delete(Long filmId) throws FilmNotFoundException {
+        if (filmId == null) {
+            throw new IllegalArgumentException("filmId cannot be null");
+        }
+
+        boolean deleted = delete(DELETE_FILM_BY_ID, filmId);
+        if (!deleted) {
+            throw new FilmNotFoundException(filmId);
+        }
+        return true;
+    }
+
+    @Override
+    public Collection<Film> search(String query, String by) {
+        List<Film> films;
+
+        if ("title".equals(by)) {
+            films = findMany(FIND_FILM_BY_TITLE, "%" + query + "%")
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else if ("director".equals(by)) {
+            films =  findMany(FIND_FILM_BY_DIRECTOR, "%" + query + "%")
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else if ("director,title".equals(by) || "title,director".equals(by)) {
+            films =  findMany(FIND_FILM_BY_DIRECTOR_OR_TITLE, "%" + query + "%", "%" + query + "%")
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else {
+            throw new IllegalArgumentException("Неподдерживаемый параметр by: " + by);
+        }
+
+        setFilmGenres(films);
+        setFilmLikes(films);
+        setFilmDirectors(films);
+
+        return films;
     }
 
     @Override
@@ -134,11 +286,27 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
             String updateQuery = "UPDATE films SET " + String.join(", ", setClauses) + " WHERE film_id = ?";
             params.add(film.getId());
             update(updateQuery, params.toArray());
+            genreStorage.updateFilmGenres(film);
         }
 
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             genreStorage.validateExist(film.getGenres().stream().map(Genre::getId).toList());
-            saveFilmGenres(film);
+            genreStorage.saveFilmGenres(film);
+        }
+
+        deleteFilmDirectors(film.getId());
+
+        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
+            directorStorage.validateExist(
+                    film.getDirectors()
+                            .stream()
+                            .map(Director::getId)
+                            .toArray(Long[]::new)
+            );
+
+            saveFilmDirectors(film);
+        } else {
+            film.setDirectors(new HashSet<>());
         }
 
         Film updatedFilm = getById(film.getId());
@@ -153,7 +321,20 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
 
         Film film = filmOpt.orElseThrow(() -> new FilmNotFoundException(id)).toFilm();
         setFilmGenres(List.of(film));
+        setFilmDirectors(List.of(film));
         return film;
+    }
+
+    @Override
+    public Collection<Film> getFavouriteFilms(long userId) {
+        List<Film> favouriteFilms =  findMany(FIND_FAVORITE_FILMS, userId)
+                .stream()
+                .map(FilmEntity::toFilm)
+                .toList();
+
+        setFilmLikes(favouriteFilms);
+        setFilmGenres(favouriteFilms);
+        return favouriteFilms;
     }
 
     @Override
@@ -169,10 +350,37 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         delete(query, userId, filmId);
     }
 
-    public void setFilmLikes(List<Film> films) {
+    public void setFilmLikes(Iterable<Film> films) {
         for (Film film : films) {
             film.setLikes(findFilmLikes(film.getId()));
         }
+    }
+
+    @Override
+    public Collection<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        directorStorage.validateExist(directorId);
+
+        List<Film> films;
+
+        if ("year".equals(sortBy)) {
+            films = findMany(FIND_FILMS_BY_DIRECTOR_SORT_BY_YEAR, directorId)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else if ("likes".equals(sortBy)) {
+            films = findMany(FIND_FILMS_BY_DIRECTOR_SORT_BY_LIKES, directorId)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else {
+            throw new IllegalArgumentException("Неподдерживаемая сортировка: " + sortBy);
+        }
+
+        setFilmGenres(films);
+        setFilmLikes(films);
+        setFilmDirectors(films);
+
+        return films;
     }
 
     public Set<Long> findFilmLikes(long filmId) {
@@ -185,20 +393,13 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
         return new HashSet<>(likes);
     }
 
-    private String getInsertGenresQuery(Film film) {
-        StringBuilder insertGenresQuery = new StringBuilder("MERGE INTO film_genre_relations KEY (film_id, genre_id) VALUES");
-        List<Long> genres = film.getGenres().stream().map(Genre::getId).toList();
+    @Override
+    public Long getRecommenderId(long userId) {
+        String query = getQueryFromSource(Paths.get(
+                RESOURCES + "query/findRecommenderV2.sql"
+        ));
 
-        Iterator<Long> iterator = genres.iterator();
-        while (iterator.hasNext()) {
-            insertGenresQuery.append(" (%d, %d)".formatted(film.getId(), iterator.next()));
-
-            if (iterator.hasNext()) {
-                insertGenresQuery.append(",");
-            }
-        }
-
-        return insertGenresQuery.toString();
+        return jdbc.queryForObject(query, Long.class, userId);
     }
 
     private void setFilmGenres(List<Film> films) {
@@ -231,5 +432,81 @@ public class H2FilmStorage extends BaseStorage<FilmEntity> implements FilmStorag
                 }
             }
         });
+    }
+
+    private void saveFilmDirectors(Film film) {
+        String query = """
+            MERGE INTO film_directors KEY(film_id, director_id)
+            VALUES (?, ?)
+            """;
+
+        for (Director director : film.getDirectors()) {
+            jdbc.update(query, film.getId(), director.getId());
+        }
+    }
+
+    private void setFilmDirectors(Collection<Film> films) {
+        if (films.isEmpty()) {
+            return;
+        }
+
+        String query = """
+            SELECT fd.film_id, d.director_id, d.name
+            FROM film_directors AS fd
+            JOIN directors AS d ON fd.director_id = d.director_id
+            """;
+
+        Map<Long, Film> filmMap = films.stream()
+                .collect(Collectors.toMap(Film::getId, film -> film));
+
+        jdbc.query(query, rs -> {
+            Long filmId = rs.getLong("film_id");
+            Film film = filmMap.get(filmId);
+
+            if (film != null) {
+                if (film.getDirectors() == null) {
+                    film.setDirectors(new HashSet<>());
+                }
+
+                film.getDirectors().add(new Director(
+                        rs.getLong("director_id"),
+                        rs.getString("name")
+                ));
+            }
+        });
+    }
+
+    private void deleteFilmDirectors(Long filmId) {
+        jdbc.update("DELETE FROM film_directors WHERE film_id = ?", filmId);
+    }
+
+    @Override
+    public List<Film> getAll(Long genreId, Integer year) {
+        List<Film> films;
+
+        if (genreId == null && year == null) {
+            films = new ArrayList<>(getAll());
+        } else if (genreId != null && year == null) {
+            films = findMany(getQueryFromSource(Paths.get(RESOURCES + "query/findPopularFilmsByGenre.sql")), genreId)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else if (genreId == null) {
+            films = findMany(getQueryFromSource(Paths.get(RESOURCES + "query/findPopularFilmsByYear.sql")), year)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        } else {
+            films = findMany(getQueryFromSource(Paths.get(RESOURCES + "query/findPopularFilmsByGenreAndYear.sql")), genreId, year)
+                    .stream()
+                    .map(FilmEntity::toFilm)
+                    .toList();
+        }
+
+        setFilmGenres(films);
+        setFilmLikes(films);
+        setFilmDirectors(films);
+
+        return films;
     }
 }
